@@ -106,12 +106,12 @@ export default function Home() {
                     </button>
                   </div>
                   <div className="mt-1 flex justify-end">
-                    <button
-                      type="button"
+                    <Link
+                      href="/forgot-password"
                       className="text-[11px] font-medium text-zinc-400 transition hover:text-orange-500"
                     >
                       Forgot password?
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
