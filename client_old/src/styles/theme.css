@@ -1,0 +1,149 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== Global ===== */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #2b1f1a, #1f1713);
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #3b2a23;
+}
+
+/* ===== Card Container ===== */
+.container {
+  width: 330px;
+  background: #f5efe9;
+  padding: 28px;
+  border-radius: 10px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Headings ===== */
+h2 {
+  text-align: center;
+  margin-bottom: 22px;
+  color: #3b2a23;
+  letter-spacing: 0.5px;
+}
+
+/* ===== Form ===== */
+label {
+  font-size: 14px;
+  color: #4b3a32;
+  margin-top: 14px;
+  display: block;
+}
+
+input {
+  width: 100%;
+  padding: 9px 10px;
+  margin-top: 6px;
+
+  border: 1px solid #c8b8ae;
+  border-radius: 5px;
+
+  font-size: 14px;
+  background-color: #ffffff;
+
+  color: #3b2a23;        /* ✅ FIX: visible text */
+  caret-color: #3b2a23; /* ✅ FIX: visible cursor */
+}
+
+input::placeholder {
+  color: #9c8578;
+}
+
+input:focus {
+  outline: none;
+  border-color: #7a4a2e;
+  box-shadow: 0 0 0 1px rgba(122, 74, 46, 0.4);
+}
+
+/* ===== Button ===== */
+button {
+  width: 100%;
+  margin-top: 22px;
+  padding: 11px;
+
+  background-color: #5a3825;
+  border: none;
+  border-radius: 5px;
+
+  color: #f5efe9;
+  font-size: 15px;
+  cursor: pointer;
+
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: #7a4a2e;
+}
+
+/* ===== Text & Links ===== */
+p {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 13px;
+  color: #4b3a32;
+}
+
+a {
+  color: #7a4a2e;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ===== Errors ===== */
+.error {
+  color: #b00020;
+  background-color: #f6d7dc;
+  padding: 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* ===== Dashboard ===== */
+.dashboard-box {
+  background-color: #efe6de;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 18px 0;
+}
+
+.dashboard-box h3 {
+  color: #3b2a23;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.dashboard-box ul {
+  list-style: none;
+  font-size: 13px;
+  color: #4b3a32;
+}
+
+.dashboard-box li {
+  margin-bottom: 6px;
+}
+
+.welcome {
+  text-align: center;
+  font-size: 14px;
+  color: #4b3a32;
+  margin-bottom: 10px;
+}
