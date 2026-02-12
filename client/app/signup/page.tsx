@@ -13,6 +13,14 @@ export default function Signup() {
 
   const [message, setMessage] = useState("");
 
+  // ✅ Strong password validator (ADDED)
+  const validatePassword = (password: string) => {
+    const strongPasswordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()[\]{}\-_=+]).{8,}$/;
+
+    return strongPasswordRegex.test(password);
+  };
+
   const handleChange = (e: any) => {
     setFormData({
       ...formData,
@@ -22,6 +30,14 @@ export default function Signup() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+
+    // ✅ Strong password validation (ADDED)
+    if (!validatePassword(formData.password)) {
+      setMessage(
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
+      );
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setMessage("Passwords do not match");
@@ -76,6 +92,11 @@ export default function Signup() {
             onChange={handleChange}
             className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
           />
+
+          {/* ✅ Password requirement helper text (ADDED) */}
+          <p className="text-xs text-zinc-500 -mt-3">
+            Must be 8+ characters, include uppercase, lowercase, number, and special character.
+          </p>
 
           <input
             type="password"

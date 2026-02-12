@@ -1,48 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export default function Login() {
-  const router = useRouter();
-
-  const [formData, setFormData] = useState({
-    email: "",
-    password: ""
-  });
-
+export default function OTP() {
+  const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
-
-  const handleChange = (e: any) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const router = useRouter();
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
+    const userId = localStorage.getItem("tempUserId");
+
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch("http://localhost:5000/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ userId, otp })
       });
 
       const data = await res.json();
       setMessage(data.message);
 
-      // ✅ If OTP is required
-      if (data.requiresOTP) {
-        localStorage.setItem("tempUserId", data.userId);
-        router.push("/otp");
-        return;
-      }
-
-      // ✅ If login succeeds without OTP
       if (data.token) {
+        localStorage.removeItem("tempUserId");
         localStorage.setItem("token", data.token);
         router.push("/blockchain");
       }
@@ -56,26 +38,18 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-100">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg border border-zinc-200">
         <h2 className="mb-2 text-center text-3xl font-bold text-orange-500">
-          Welcome Back
+          Verify OTP
         </h2>
         <p className="mb-6 text-center text-sm text-zinc-500">
-          Sign in to your account
+          Enter the code sent to your email
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            onChange={handleChange}
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
-          />
-
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            onChange={handleChange}
+            type="text"
+            placeholder="Enter 6-digit OTP"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
             className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
           />
 
@@ -83,7 +57,7 @@ export default function Login() {
             type="submit"
             className="w-full rounded-lg bg-orange-500 py-3 font-semibold text-white transition hover:bg-orange-600"
           >
-            Login
+            Verify
           </button>
         </form>
 
@@ -92,16 +66,6 @@ export default function Login() {
             {message}
           </p>
         )}
-
-        <p className="mt-6 text-center text-sm text-zinc-600">
-          Don’t have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-semibold text-orange-500 hover:underline"
-          >
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   );
