@@ -1,0 +1,182 @@
+.container {
+  background: #f3f4f6;
+  padding: 25px;
+  border-radius: 10px;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.addBtn,
+.exportBtn {
+  background: #fff;
+  color: #000;
+  border: 1px solid #ddd;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.addBtn:hover,
+.exportBtn:hover {
+  background: #f3f4f6;
+}
+
+/* FILTERS */
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.search {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 13px;
+  background: transparent;
+}
+
+.search::placeholder {
+  color: #9ca3af;
+}
+
+.select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 13px;
+  color: #000;
+  background: white;
+}
+
+/* TABLE */
+.tableContainer {
+  background: white;
+  border-radius: 10px;
+  padding: 10px 0;
+  max-height: 450px; /* scroll if table is large */
+  overflow-y: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: 12px 15px;
+  text-align: left;
+  font-size: 13px;
+  border-bottom: 1px solid #eee;
+}
+
+.table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #000;
+}
+
+.blackHeader {
+  color: #000;
+  font-weight: 600;
+}
+
+.lightGrey {
+  color: #9ca3af;
+}
+
+.email {
+  color: #1d4ed8;
+  text-decoration: underline;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 150px;
+}
+
+/* STATUS BADGES */
+.active {
+  background: #c6f6d5;
+  color: #065f46;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.inactive {
+  background: #fecaca;
+  color: #7f1d1d;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+/* ACTION SELECT */
+.actionSelect {
+  padding: 6px 8px;
+  border-radius
+  : 6px;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  color: #000;
+  background: white;
+}
+
+/* Remove Pagination completely */
+.pagination {
+  display: none;
+}
+
+/* SUSPENDED STATUS */
+.suspended {
+  background: #fef3c7; /* yellow light */
+  color: #78350f;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+/* Keep email within cell */
+.email {
+  color: #1d4ed8;
+  text-decoration: underline;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 180px;
+}
+
+/* Add Employee / Export CSV hover */
+.addBtn:hover,
+.exportBtn:hover {
+  background: #f3f4f6;
+}
+
+/* Table scroll */
+.tableContainer {
+  max-height: 450px;
+  overflow-y: auto;
+}

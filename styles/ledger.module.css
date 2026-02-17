@@ -1,0 +1,64 @@
+.title {
+  margin-bottom: 20px;
+  font-size: 25px;
+  font-weight: bold;
+  color: black;
+}
+
+.section {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.table th,
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+.table th {
+  text-align: left;
+  font-weight: 600;
+}
+
+.table td {
+  text-align: left;
+}
+
+.verified {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.tableTitle {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: #000;    
+}
+
+.blackHeader {
+  color: #000;
+  font-weight: 600;
+}
+
+.lightGrey {
+  color: #9ca3af;
+}
+
+.tdGreen {
+  color: green;
+  font-weight: bold;
+}
+
+.tdRed {
+  color: red;
+  font-weight: bold;
+}
