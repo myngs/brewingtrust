@@ -1,10 +1,13 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 
 const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
-const nodemailer = require("nodemailer");
+const roleMiddleware = require("../middleware/roleMiddleware");
+
+const router = express.Router();
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -14,14 +17,14 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-const router = express.Router();
 
-
+// =====================
 // SIGNUP
+// =====================
 router.post("/signup", async (req, res) => {
   try {
     const { username, email, password, confirmPassword } = req.body;
-    
+
     if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -45,20 +48,23 @@ router.post("/signup", async (req, res) => {
     const newUser = new User({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role: "employee" // default role
     });
 
     await newUser.save();
 
     res.status(201).json({ message: "User created successfully" });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
 
-// LOGIN
+// =====================
+// LOGIN (SEND OTP)
+// =====================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -68,20 +74,17 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Generate 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     user.otp = otp;
-    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await user.save();
 
-    // Send email
     await transporter.sendMail({
       from: process.env.EMAIL,
       to: user.email,
@@ -90,54 +93,79 @@ router.post("/login", async (req, res) => {
     });
 
     res.json({
-    requiresOTP: true,
-    userId: user._id,
-    message: "OTP sent to email"
+      requiresOTP: true,
+      userId: user._id,
+      message: "OTP sent to email"
     });
-
-
 
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
-// VERIFY OTP
+
+// =====================
+// VERIFY OTP (GENERATE JWT)
+// =====================
 router.post("/verify-otp", async (req, res) => {
-  const { userId, otp } = req.body;
+  try {
+    const { userId, otp } = req.body;
 
-  const user = await User.findById(userId);
+    const user = await User.findById(userId);
 
-  if (!user) {
-    return res.status(400).json({ message: "User not found" });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    if (user.otp !== otp || user.otpExpires < new Date()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    user.otp = null;
+    user.otpExpires = null;
+    await user.save();
+
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role  // 🔥 ROLE INCLUDED
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ token, role: user.role });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-
-  if (
-    user.otp !== otp ||
-    user.otpExpires < new Date()
-  ) {
-    return res.status(400).json({ message: "Invalid or expired OTP" });
-  }
-
-  user.otp = null;
-  user.otpExpires = null;
-  await user.save();
-
-  const token = jwt.sign(
-    { id: user._id },
-    process.env.JWT_SECRET,
-    { expiresIn: "15s" }
-  );
-
-  res.json({ token });
 });
 
-// PROTECTED TEST ROUTE
-router.get("/protected", authMiddleware, (req, res) => {
-  res.json({
-    message: "You accessed a protected route 🔐",
-    user: req.user
-  });
-});
+
+// =====================
+// ADMIN ROUTE
+// =====================
+router.get(
+  "/admin-dashboard",
+  authMiddleware,
+  roleMiddleware("admin"),
+  (req, res) => {
+    res.json({ message: "Welcome Admin 👑" });
+  }
+);
+
+
+// =====================
+// EMPLOYEE ROUTE
+// =====================
+router.get(
+  "/employee-dashboard",
+  authMiddleware,
+  roleMiddleware("employee"),
+  (req, res) => {
+    res.json({ message: "Welcome Employee 👷" });
+  }
+);
+
 
 module.exports = router;

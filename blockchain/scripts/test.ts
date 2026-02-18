@@ -1,33 +1,47 @@
+// scripts/test.ts
 import { ethers } from "hardhat";
 
 async function main() {
-  const contractAddress = "0x529fCeA39cA81F1f6da74667b986838f64a5819c";
+  console.log("🚀 Deploying Attendance contract...");
 
-  const Attendance = await ethers.getContractAt(
-    "Attendance",
-    contractAddress
-  );
+  // 1️⃣ Deploy the contract
+  const Attendance = await ethers.getContractFactory("Attendance");
+  const attendance = await Attendance.deploy();
+  await attendance.waitForDeployment();
 
-  // ✅ Correct way in Hardhat v6
-  const [signer] = await ethers.getSigners();
-  const address = await signer.getAddress();
+  console.log("✅ Contract deployed at:", attendance.target); // Use only .target
+
+  // 2️⃣ Get the 3rd prefunded Ganache account
+  // Make sure hardhat.config.ts includes ONLY the 3rd account's private key
+  const [thirdAccount] = await ethers.getSigners();
+
+  console.log("\n👤 Testing 3rd prefunded account:", thirdAccount.address);
 
   const today = Math.floor(Date.now() / 1000);
 
-  console.log("Sending clockIn...");
+  // 3️⃣ Clock In
+  const txIn = await attendance.connect(thirdAccount).clockIn(today);
+  await txIn.wait();
+  console.log("⏰ Clocked In!");
 
-  const tx = await Attendance.connect(signer).clockIn(today);
-  await tx.wait();
+  // 4️⃣ Clock Out
+  const txOut = await attendance.connect(thirdAccount).clockOut(today);
+  await txOut.wait();
+  console.log("⏰ Clocked Out!");
 
-  console.log("Transaction confirmed!");
+  // 5️⃣ Fetch the attendance record
+  const record = await attendance.getRecord(thirdAccount.address, today);
+  console.log(
+    `📋 Attendance Record → ClockIn: ${record.clockIn.toString()} | ClockOut: ${record.clockOut.toString()}`
+  );
 
-  const record = await Attendance.getRecord(address, today);
-
-  console.log("Clock In:", record.clockIn.toString());
-  console.log("Clock Out:", record.clockOut.toString());
+  console.log("\n🎉 Test completed for 3rd prefunded account!");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
