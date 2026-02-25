@@ -33,7 +33,13 @@ export default function OTP() {
       if (data.token) {
         localStorage.removeItem("tempUserId");
         localStorage.setItem("token", data.token);
-        router.push("/blockchain");
+        localStorage.setItem("role", data.role);
+        
+        if (data.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/blockchain");
+        }
       }
     } catch {
       setMessage("Server error");

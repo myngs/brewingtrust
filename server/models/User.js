@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
     enum: ["admin", "employee"],
     default: "employee"
   },
+  walletAddress: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -33,6 +38,14 @@ const userSchema = new mongoose.Schema({
   otpExpires: {
   type: Date
   },
+  failedAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockUntil: {
+    type: Date,
+    default: null
+  }
 
 });
 

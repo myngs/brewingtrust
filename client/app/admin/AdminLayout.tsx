@@ -9,102 +9,89 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [showProfile, setShowProfile] = useState(false);
 
-  const isActive = (path: string) =>
-    pathname === path ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-gray-100";
+  const isActive = (path: string) => pathname === path;
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-gray-800">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow flex flex-col justify-between">
-        <div>
-          {/* Logo */}
-          <div className="flex items-center gap-3 p-4 border-b">
-            <Image src="/logo.png" alt="Logo" width={50} height={50} />
-            <div className="text-xl font-bold text-orange-500">
-              BREWING <span className="text-gray-800 font-normal">TRUST</span>
+    <div className="min-h-screen bg-[#f4f2ee] px-6 py-6 text-zinc-900">
+      <div className="mx-auto max-w-7xl flex gap-6">
+        {/* Sidebar */}
+        <aside className="w-72 bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-6 flex flex-col justify-between">
+          {/* Logo Row */}
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 bg-[#8b5a2b] rounded-full flex items-center justify-center">
+              <Image src="/logo.png" alt="Brewing Trust Logo" width={32} height={32} />
+            </div>
+            <div className="text-lg font-bold">
+              <div className="text-[#8b5a2b]">BREWING</div>
+              <div className="text-zinc-900">TRUST</div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex flex-col mt-4 space-y-1">
+          <nav className="space-y-2">
             <SidebarLink href="/admin/overview" icon="/icons/overview.png" text="Overview" isActive={isActive("/admin/overview")} />
             <SidebarLink href="/admin/employees" icon="/icons/employee.png" text="Employee List" isActive={isActive("/admin/employees")} />
-            <SidebarLink href="/admin/attendance" icon="/icons/attendance.png" text="Attendance & Payroll" isActive={isActive("/admin/attendance")} />
+            <SidebarLink href="/admin/attendance" icon="/icons/attendance.png" text="Attendance and Payroll" isActive={isActive("/admin/attendance")} />
             <SidebarLink href="/admin/anomaly" icon="/icons/anomaly.png" text="Anomaly Detection" isActive={isActive("/admin/anomaly")} />
             <SidebarLink href="/admin/ledger" icon="/icons/ledger.png" text="Blockchain Ledger" isActive={isActive("/admin/ledger")} />
           </nav>
-        </div>
 
-        {/* Profile & Logout */}
-        <div className="p-4 border-t">
-          <div
-            className="flex items-center gap-3 cursor-pointer"
-            onClick={() => setShowProfile(true)}
-          >
-            <Image
-              src="/icons/avatar.png"
-              alt="Avatar"
-              width={40}
-              height={40}
-              className="rounded-full"
-            />
-            <div>
-              <p className="font-semibold text-gray-800">Bruno Mars</p>
-              <p className="text-sm text-gray-500">Admin</p>
+          {/* Profile Card */}
+          <div className="mt-auto">
+            <div
+              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-50"
+              onClick={() => setShowProfile(true)}
+            >
+              <div className="w-10 h-10 bg-[#8b5a2b] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                B
+              </div>
+              <div>
+                <div className="font-semibold text-zinc-900">Bruno Mars</div>
+                <div className="text-sm text-zinc-500">Admin</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-3 text-[#e54b3c] cursor-pointer hover:text-red-600">
+              <Image src="/icons/logout.png" alt="Logout" width={20} height={20} />
+              <span>Logout</span>
             </div>
           </div>
+        </aside>
 
-          <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("role");
-              window.location.href = "/login";
-            }}
-            className="mt-3 flex items-center gap-2 text-red-500 hover:text-red-600"
-          >
-            <Image src="/icons/logout.png" alt="Logout" width={20} height={20} />
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 p-6">{children}</main>
+        {/* Main content */}
+        <main className="flex-1 min-w-0">{children}</main>
+      </div>
 
       {/* Profile Modal */}
       {showProfile && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
           onClick={() => setShowProfile(false)}
         >
           <div
-            className="bg-white rounded-xl p-6 w-96 shadow-lg"
+            className="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)] max-w-md w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Profile</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-extrabold text-zinc-900">Profile</h2>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-zinc-500 hover:text-zinc-700 text-xl"
                 onClick={() => setShowProfile(false)}
               >
                 ✕
               </button>
             </div>
 
-            <div className="flex flex-col items-center gap-4">
-              <Image
-                src="/icons/avatar.png"
-                alt="Profile Avatar"
-                width={80}
-                height={80}
-                className="rounded-full"
-              />
-              <div className="text-center text-gray-800">
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-20 h-20 bg-[#8b5a2b] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                B
+              </div>
+              <div className="text-center text-zinc-900">
                 <p><strong>Name:</strong> Bruno Mars</p>
                 <p><strong>Email:</strong> admin@brewingtrust.com</p>
                 <p><strong>Role:</strong> Administrator</p>
               </div>
-              <button className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
+              <button className="bg-[#8b5a2b] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#7a4a1b] transition">
                 Edit Profile
               </button>
             </div>
@@ -116,11 +103,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 // Helper component for sidebar links
-function SidebarLink({ href, icon, text, isActive }: { href: string; icon: string; text: string; isActive: string }) {
+function SidebarLink({ href, icon, text, isActive }: { href: string; icon: string; text: string; isActive: boolean }) {
   return (
-    <Link href={href} className={`flex items-center gap-2 px-4 py-2 rounded transition ${isActive}`}>
-      <Image src={icon} alt={text} width={20} height={20} />
-      {text}
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+        isActive
+          ? "bg-[#8b5a2b] text-white"
+          : "text-zinc-700 hover:bg-gray-100"
+      }`}
+    >
+      <Image src={icon} alt={`${text} icon`} width={20} height={20} />
+      <span className="font-medium">{text}</span>
     </Link>
   );
 }

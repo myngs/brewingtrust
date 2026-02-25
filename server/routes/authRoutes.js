@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
 // =====================
 router.post("/signup", async (req, res) => {
   try {
-    const { username, email, password, confirmPassword } = req.body;
+    const { username, email, password, confirmPassword, walletAddress } = req.body;
 
     if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
@@ -49,7 +49,8 @@ router.post("/signup", async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      role: "employee" // default role
+      role: "employee", // default role
+      walletAddress: walletAddress || undefined
     });
 
     await newUser.save();
@@ -74,10 +75,40 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockUntil - new Date()) / 1000 / 60);
+      return res.status(400).json({ 
+        message: `Account locked. Try again in ${minutesLeft} minutes.`,
+        locked: true,
+        lockUntil: user.lockUntil
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      // Increment failed attempts
+      user.failedAttempts = (user.failedAttempts || 0) + 1;
+      
+      if (user.failedAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 5 * 60 * 1000); // Lock for 5 minutes
+        await user.save();
+        return res.status(400).json({ 
+          message: "Too many failed attempts. Account locked for 5 minutes.",
+          locked: true
+        });
+      }
+      
+      await user.save();
+      return res.status(400).json({ 
+        message: "Invalid credentials",
+        attemptsRemaining: 5 - user.failedAttempts
+      });
     }
+
+    // Successful login - reset failed attempts
+    user.failedAttempts = 0;
+    user.lockUntil = null;
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -94,7 +125,7 @@ router.post("/login", async (req, res) => {
 
     res.json({
       requiresOTP: true,
-      userId: user._id,
+      user: { id: user._id.toString() },
       message: "OTP sent to email"
     });
 
@@ -151,6 +182,23 @@ router.get(
   roleMiddleware("admin"),
   (req, res) => {
     res.json({ message: "Welcome Admin 👑" });
+  }
+);
+
+// =====================
+// GET ALL USERS (ADMIN)
+// =====================
+router.get(
+  "/users",
+  authMiddleware,
+  roleMiddleware("admin"),
+  async (req, res) => {
+    try {
+      const users = await User.find({}, { password: 0, otp: 0, otpExpires: 0 }); // Exclude sensitive fields
+      res.json({ users });
+    } catch (err) {
+      res.status(500).json({ message: "Server error", error: err.message });
+    }
   }
 );
 

@@ -17,20 +17,21 @@ async function main() {
 
   console.log("\n👤 Testing 3rd prefunded account:", thirdAccount.address);
 
-  const today = Math.floor(Date.now() / 1000);
+  const today = new Date();
+  const date = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
 
   // 3️⃣ Clock In
-  const txIn = await attendance.connect(thirdAccount).clockIn(today);
+  const txIn = await attendance.connect(thirdAccount).clockIn(date);
   await txIn.wait();
   console.log("⏰ Clocked In!");
 
   // 4️⃣ Clock Out
-  const txOut = await attendance.connect(thirdAccount).clockOut(today);
+  const txOut = await attendance.connect(thirdAccount).clockOut(date);
   await txOut.wait();
   console.log("⏰ Clocked Out!");
 
   // 5️⃣ Fetch the attendance record
-  const record = await attendance.getRecord(thirdAccount.address, today);
+  const record = await attendance.getRecord(thirdAccount.address, date);
   console.log(
     `📋 Attendance Record → ClockIn: ${record.clockIn.toString()} | ClockOut: ${record.clockOut.toString()}`
   );

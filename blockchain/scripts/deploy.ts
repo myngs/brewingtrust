@@ -6,8 +6,8 @@ async function main() {
   // Get all available accounts
   const signers = await ethers.getSigners();
 
-  // Pick the 3rd prefunded account (index 2)
-  const deployer = signers[2];
+  // Pick the first available account
+  const deployer = signers[0];
 
   console.log("Deploying with account:", deployer.address);
 
