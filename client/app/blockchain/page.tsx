@@ -22,6 +22,21 @@ export default function UserPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [todayRecord, setTodayRecord] = useState<{clockIn: number, clockOut: number}>({clockIn: 0, clockOut: 0});
   const [isClient, setIsClient] = useState(false);
+  
+  // Historical records from MongoDB
+  const [allRecords, setAllRecords] = useState<Array<{
+    date: string;
+    clockIn: number;
+    clockOut: number;
+    totalHours: number;
+    status: string;
+  }>>([]);
+  const [loadingRecords, setLoadingRecords] = useState<boolean>(false);
+  
+  // Date picker state - defaults to today
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
 
   const now = useNow();
 
@@ -184,7 +199,7 @@ export default function UserPage() {
     }
   };
 
-  // Load today's record from database first (for persistence)
+  // Load record from database for a specific date
   const loadFromDatabase = async (dateValue: number) => {
     try {
       const token = localStorage.getItem("token");
@@ -210,7 +225,34 @@ export default function UserPage() {
     return null;
   };
 
-  // Clock in
+  // Fetch all attendance records from MongoDB
+  const fetchAllRecords = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      setLoadingRecords(true);
+      const response = await fetch('http://localhost:5000/api/attendance/my-records', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("All records loaded from MongoDB:", data);
+        setAllRecords(data.records || []);
+      } else {
+        console.error("Failed to fetch records:", response.status);
+      }
+    } catch (err) {
+      console.error("Error fetching all records:", err);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  // Clock in - always uses today's date
   const clockIn = async () => {
     if (!wallet) return alert("Connect your wallet first");
 
@@ -249,9 +291,13 @@ export default function UserPage() {
       // Save to database for persistence
       await saveToDatabase(date, 'clockIn');
       
+      // Refresh all records and today's record
+      await fetchAllRecords();
+      fetchRecordForDate();
+      
       // Small delay to allow blockchain to update
       setTimeout(() => {
-        fetchTodayRecord();
+        fetchRecordForDate();
       }, 2000);
 
     } catch (err: any) {
@@ -270,7 +316,7 @@ export default function UserPage() {
     }
   };
 
-  // Clock out
+  // Clock out - always uses today's date
   const clockOut = async () => {
     if (!wallet) return alert("Connect your wallet first");
 
@@ -313,9 +359,13 @@ export default function UserPage() {
       // Save to database for persistence
       await saveToDatabase(dateValue, 'clockOut');
       
+      // Refresh all records and today's record
+      await fetchAllRecords();
+      fetchRecordForDate();
+      
       // Small delay to allow blockchain to update
       setTimeout(() => {
-        fetchTodayRecord();
+        fetchRecordForDate();
       }, 2000);
 
     } catch (err: any) {
@@ -340,14 +390,11 @@ export default function UserPage() {
     }
   };
 
-  // Fetch today's record from blockchain directly
-  const fetchFromBlockchain = async () => {
+  // Fetch record from blockchain for a specific date
+  const fetchFromBlockchain = async (dateValue: number) => {
     if (!wallet) return;
 
     try {
-      const today = new Date();
-      const dateValue = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-
       const contract = await getContract();
       if (!contract) return;
 
@@ -361,37 +408,37 @@ export default function UserPage() {
         // Handle BAD_DATA error when no record exists - treat as no clock-in/clock-out
         // This is expected behavior when no attendance records exist yet, don't log as error
         if (callErr.code === 'BAD_DATA' || callErr.message?.includes('could not decode result data')) {
-          setTodayRecord({ clockIn: 0, clockOut: 0 });
-          return;
+          return { clockIn: 0, clockOut: 0 };
         }
         // Log other unexpected errors but don't throw - keep existing data
         console.error("Blockchain call error:", callErr);
-        return;
+        return null;
       }
 
-      // Set the record if we got valid data
+      // Return the record if we got valid data
       if (record && record[0] !== undefined) {
         const clockInTime = Number(record[0]);
         const clockOutTime = Number(record[1]);
         console.log("Parsed times - clockIn:", clockInTime, "clockOut:", clockOutTime);
-        setTodayRecord({ clockIn: clockInTime, clockOut: clockOutTime });
+        return { clockIn: clockInTime, clockOut: clockOutTime };
       } else {
         // Empty record - no clock-in yet
-        setTodayRecord({ clockIn: 0, clockOut: 0 });
+        return { clockIn: 0, clockOut: 0 };
       }
     } catch (err: any) {
       console.error("Error fetching from blockchain:", err);
-      // Don't update state on error - keep existing data
+      return null;
     }
   };
 
-  // Fetch today's record - try database first for persistence, then blockchain
-  const fetchTodayRecord = async () => {
+  // Fetch record for the selected date - try database first for persistence, then blockchain
+  const fetchRecordForDate = async () => {
     if (!wallet) return;
 
     try {
-      const today = new Date();
-      const dateValue = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+      // Convert selected date string to dateValue format (YYYYMMDD)
+      const dateParts = selectedDate.split('-');
+      const dateValue = parseInt(dateParts[0]) * 10000 + parseInt(dateParts[1]) * 100 + parseInt(dateParts[2]);
 
       // First, try to load from database for persistence
       const dbRecord = await loadFromDatabase(dateValue);
@@ -402,26 +449,28 @@ export default function UserPage() {
       }
 
       // If no database record, try blockchain
-      await fetchFromBlockchain();
+      const blockchainRecord = await fetchFromBlockchain(dateValue);
+      if (blockchainRecord) {
+        setTodayRecord(blockchainRecord);
+      } else {
+        setTodayRecord({ clockIn: 0, clockOut: 0 });
+      }
     } catch (err: any) {
-      console.error("Error fetching today record:", err);
-      // Don't update state on error - keep existing data
+      console.error("Error fetching record for date:", err);
+      setTodayRecord({ clockIn: 0, clockOut: 0 });
     }
   };
 
-  // Fetch record on wallet connect and set up periodic polling
+  // Fetch record on wallet connect and when selected date changes
   useEffect(() => {
     if (wallet) {
-      fetchTodayRecord();
-      
-      // Poll every 5 seconds to check for updates from blockchain
-      const intervalId = setInterval(() => {
-        fetchTodayRecord();
-      }, 5000);
-      
-      return () => clearInterval(intervalId);
+      fetchRecordForDate();
+      fetchAllRecords();
     }
-  }, [wallet]);
+  }, [wallet, selectedDate]);
+
+  // Check if selected date is today
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
   const time = now.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -438,6 +487,14 @@ export default function UserPage() {
     month: "long",
     day: "numeric",
   });
+
+  // Format date string for display
+  const formatDate = (dateStr: string) => {
+    const year = dateStr.substring(0, 4);
+    const month = dateStr.substring(4, 6);
+    const day = dateStr.substring(6, 8);
+    return new Date(`${year}-${month}-${day}`).toLocaleDateString();
+  };
 
   return (
     <main className="min-h-screen bg-[#f4f2ee] px-10 py-8 text-zinc-900">
@@ -509,14 +566,27 @@ export default function UserPage() {
               <div className="max-w-sm text-sm text-zinc-700">
                 <div className="text-xs font-bold text-zinc-800">Status:</div>
                 <div className="mt-1 text-xs text-zinc-600">
-                  {todayRecord.clockIn ? (
-                    todayRecord.clockOut ? (
-                      `Clocked out at ${new Date(todayRecord.clockOut * 1000).toLocaleTimeString()}`
+                  {isToday ? (
+                    todayRecord.clockIn ? (
+                      todayRecord.clockOut ? (
+                        `Clocked out at ${new Date(todayRecord.clockOut * 1000).toLocaleTimeString()}`
+                      ) : (
+                        `Clocked in since ${new Date(todayRecord.clockIn * 1000).toLocaleTimeString()}`
+                      )
                     ) : (
-                      `Clocked in since ${new Date(todayRecord.clockIn * 1000).toLocaleTimeString()}`
+                      "Not clocked in today"
                     )
                   ) : (
-                    "Not clocked in today"
+                    // Show status for selected past date
+                    todayRecord.clockIn ? (
+                      todayRecord.clockOut ? (
+                        `Clocked in at ${new Date(todayRecord.clockIn * 1000).toLocaleTimeString()}, out at ${new Date(todayRecord.clockOut * 1000).toLocaleTimeString()}`
+                      ) : (
+                        `Clocked in at ${new Date(todayRecord.clockIn * 1000).toLocaleTimeString()}`
+                      )
+                    ) : (
+                      "No record for this date"
+                    )
                   )}
                 </div>
                 {status && (
@@ -538,15 +608,17 @@ export default function UserPage() {
                   <>
                     <button
                       onClick={() => clockIn()}
-                      disabled={loading || todayRecord.clockIn !== 0}
+                      disabled={loading || todayRecord.clockIn !== 0 || !isToday}
                       className="w-full rounded-xl bg-[#7bbf6a] px-10 py-4 text-xl font-semibold text-white shadow-sm transition-colors hover:bg-[#6aae5c] disabled:opacity-50 md:w-56"
+                      title={!isToday ? "Can only clock in for today" : ""}
                     >
                       {loading ? "Processing..." : "Clock-In"}
                     </button>
                     <button
                       onClick={() => clockOut()}
-                      disabled={loading || todayRecord.clockIn === 0 || todayRecord.clockOut !== 0}
+                      disabled={loading || todayRecord.clockIn === 0 || todayRecord.clockOut !== 0 || !isToday}
                       className="w-full rounded-xl bg-[#e43d2f] px-10 py-4 text-xl font-semibold text-white shadow-sm transition-colors hover:bg-[#d33629] disabled:opacity-50 md:w-56"
+                      title={!isToday ? "Can only clock out for today" : ""}
                     >
                       {loading ? "Processing..." : "Clock-Out"}
                     </button>
@@ -557,6 +629,37 @@ export default function UserPage() {
           </div>
         </section>
 
+        {/* Date Picker Section */}
+        <section className="mt-10 rounded-2xl bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm font-semibold text-zinc-700">
+              View Attendance Records
+            </div>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <label htmlFor="datePicker" className="text-sm text-zinc-600">
+                Select Date:
+              </label>
+              <input
+                type="date"
+                id="datePicker"
+                value={selectedDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-800 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              />
+              {selectedDate !== new Date().toISOString().split('T')[0] && (
+                <button
+                  onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+                >
+                  Go to Today
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Selected Date Record */}
         <section className="mt-10 overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
           <div className="overflow-x-auto">
             <table className="min-w-full text-center text-sm">
@@ -571,7 +674,9 @@ export default function UserPage() {
               </thead>
               <tbody>
                 <tr className="border-t border-zinc-200 bg-white">
-                  <td className="px-6 py-3 font-semibold text-zinc-700">{now.toLocaleDateString()}</td>
+                  <td className="px-6 py-3 font-semibold text-zinc-700">
+                    {new Date(selectedDate).toLocaleDateString()}
+                  </td>
                   <td className="px-6 py-3 text-zinc-700">
                     {todayRecord?.clockIn ? new Date(todayRecord.clockIn * 1000).toLocaleTimeString() : "-"}
                   </td>
@@ -587,6 +692,70 @@ export default function UserPage() {
                     {todayRecord?.clockIn ? (todayRecord.clockOut ? "Present" : "Clocked In") : "Not Clocked"}
                   </td>
                 </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Historical Records from MongoDB */}
+        <section className="mt-10 overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
+          <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
+            <h2 className="text-lg font-semibold text-zinc-800">Attendance History</h2>
+            <button
+              onClick={fetchAllRecords}
+              disabled={loadingRecords}
+              className="rounded-lg bg-[#5b3a1c] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4a2f17] disabled:opacity-50"
+            >
+              {loadingRecords ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-center text-sm">
+              <thead>
+                <tr className="bg-[#5b3a1c] text-white">
+                  <th className="px-6 py-4 text-xs font-semibold">Date</th>
+                  <th className="px-6 py-4 text-xs font-semibold">Clock-In</th>
+                  <th className="px-6 py-4 text-xs font-semibold">Clock-Out</th>
+                  <th className="px-6 py-4 text-xs font-semibold">Hours Worked</th>
+                  <th className="px-6 py-4 text-xs font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingRecords ? (
+                  <tr className="border-t border-zinc-200">
+                    <td colSpan={5} className="px-6 py-8 text-zinc-500">
+                      Loading records...
+                    </td>
+                  </tr>
+                ) : allRecords.length === 0 ? (
+                  <tr className="border-t border-zinc-200">
+                    <td colSpan={5} className="px-6 py-8 text-zinc-500">
+                      No attendance records found
+                    </td>
+                  </tr>
+                ) : (
+                  allRecords.map((record, index) => (
+                    <tr key={index} className="border-t border-zinc-200 bg-white">
+                      <td className="px-6 py-3 font-semibold text-zinc-700">
+                        {formatDate(record.date)}
+                      </td>
+                      <td className="px-6 py-3 text-zinc-700">
+                        {record.clockIn ? new Date(record.clockIn * 1000).toLocaleTimeString() : "-"}
+                      </td>
+                      <td className="px-6 py-3 text-zinc-700">
+                        {record.clockOut ? new Date(record.clockOut * 1000).toLocaleTimeString() : "-"}
+                      </td>
+                      <td className="px-6 py-3 text-zinc-700">
+                        {record.totalHours > 0 ? `${record.totalHours.toFixed(1)}h` : "-"}
+                      </td>
+                      <td className="px-6 py-3 text-zinc-700">
+                        {record.status === "completed" ? "Completed" : 
+                         record.status === "clocked-in" ? "Clocked In" : 
+                         record.status === "clocked-out" ? "Clocked Out" : "Not Started"}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

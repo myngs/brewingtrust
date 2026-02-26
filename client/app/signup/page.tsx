@@ -9,7 +9,6 @@ export default function Signup() {
     email: "",
     password: "",
     confirmPassword: "",
-    walletAddress: "",
   });
 
   const [message, setMessage] = useState("");
@@ -94,15 +93,6 @@ export default function Signup() {
             onChange={handleChange}
             className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
             required
-          />
-
-          <input
-            type="text"
-            name="walletAddress"
-            placeholder="Wallet Address (optional)"
-            value={formData.walletAddress}
-            onChange={handleChange}
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
           />
 
           <input

@@ -1,3 +1,6 @@
+// Input sanitization library
+const sanitizeHtml = require("sanitize-html");
+
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -8,6 +11,50 @@ const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
 const router = express.Router();
+
+// =====================
+// INPUT VALIDATION & SANITIZATION
+// =====================
+
+// Regex patterns for validation
+const VALIDATION_PATTERNS = {
+  username: /^[a-zA-Z0-9_]{3,20}$/,
+  email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+};
+
+// Sanitization function
+const sanitizeInput = (input) => {
+  if (typeof input !== "string") return input;
+  
+  // Remove HTML/script tags
+  const clean = sanitizeHtml(input, {
+    allowedTags: [],
+    allowedAttributes: {}
+  });
+  
+  // Trim whitespace
+  return clean.trim();
+};
+
+// Validation function with regex
+const validateField = (field, value, pattern) => {
+  if (!value || typeof value !== "string") {
+    return { valid: false, message: `${field} is required` };
+  }
+  
+  const sanitized = sanitizeInput(value);
+  
+  if (sanitized.length === 0) {
+    return { valid: false, message: `${field} cannot be empty` };
+  }
+  
+  if (pattern && !pattern.test(sanitized)) {
+    return { valid: false, message: `${field} format is invalid` };
+  }
+  
+  return { valid: true, value: sanitized };
+};
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -23,10 +70,31 @@ const transporter = nodemailer.createTransport({
 // =====================
 router.post("/signup", async (req, res) => {
   try {
-    const { username, email, password, confirmPassword, walletAddress } = req.body;
+    const { username, email, password, confirmPassword } = req.body;
 
+    // Validate all required fields
     if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Validate username (alphanumeric + underscore, 3-20 chars)
+    const usernameValidation = validateField("Username", username, VALIDATION_PATTERNS.username);
+    if (!usernameValidation.valid) {
+      return res.status(400).json({ message: usernameValidation.message });
+    }
+
+    // Validate email format
+    const emailValidation = validateField("Email", email, VALIDATION_PATTERNS.email);
+    if (!emailValidation.valid) {
+      return res.status(400).json({ message: emailValidation.message });
+    }
+
+    // Validate password strength
+    const passwordValidation = validateField("Password", password, VALIDATION_PATTERNS.password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ 
+        message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+      });
     }
 
     if (password !== confirmPassword) {
@@ -34,7 +102,7 @@ router.post("/signup", async (req, res) => {
     }
 
     const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+      $or: [{ email: emailValidation.value }, { username: usernameValidation.value }]
     });
 
     if (existingUser) {
@@ -43,14 +111,13 @@ router.post("/signup", async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(passwordValidation.value, 10);
 
     const newUser = new User({
-      username,
-      email,
+      username: usernameValidation.value,
+      email: emailValidation.value,
       password: hashedPassword,
-      role: "employee", // default role
-      walletAddress: walletAddress || undefined
+      role: "employee" // default role
     });
 
     await newUser.save();
@@ -70,7 +137,10 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    // Sanitize email input
+    const sanitizedEmail = sanitizeInput(email);
+
+    const user = await User.findOne({ email: sanitizedEmail });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }

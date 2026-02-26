@@ -167,6 +167,81 @@ router.get("/today/:date", authMiddleware, roleMiddleware("employee"), async (re
 });
 
 // =====================
+// GET ALL ATTENDANCE RECORDS FOR CURRENT USER
+// =====================
+router.get("/my-records", authMiddleware, roleMiddleware("employee"), async (req, res) => {
+  try {
+    const user = await getUserFromToken(req);
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const records = await Attendance.find({ userId: user._id })
+      .sort({ date: -1, createdAt: -1 });
+
+    if (!records || records.length === 0) {
+      return res.json({ records: [] });
+    }
+
+    res.json({
+      records: records.map(record => ({
+        date: record.date,
+        clockIn: record.clockIn || 0,
+        clockOut: record.clockOut || 0,
+        totalHours: record.totalHours || 0,
+        status: record.status,
+        blockchainTxHash: record.blockchainTxHash
+      }))
+    });
+
+  } catch (err) {
+    console.error("Get my records error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+// Helper function to mask sensitive data
+const maskSensitiveData = (record) => {
+  const maskedRecord = { ...record };
+  
+  // Mask username (show first 2 chars + asterisks)
+  if (maskedRecord.userId?.username) {
+    const username = maskedRecord.userId.username;
+    maskedRecord.userId.username = username.length > 2 
+      ? username.substring(0, 2) + "*".repeat(username.length - 2)
+      : "**";
+  }
+  
+  // Mask email (show first part + asterisks + domain)
+  if (maskedRecord.userId?.email) {
+    const email = maskedRecord.userId.email;
+    const atIndex = email.indexOf("@");
+    if (atIndex > 2) {
+      maskedRecord.userId.email = email.substring(0, 2) + "*".repeat(atIndex - 2) + email.substring(atIndex);
+    } else {
+      maskedRecord.userId.email = "**" + email.substring(atIndex);
+    }
+  }
+  
+  // Mask wallet address (show first 6 and last 4 chars)
+  if (maskedRecord.userId?.walletAddress) {
+    const wallet = maskedRecord.userId.walletAddress;
+    if (wallet.length > 10) {
+      maskedRecord.userId.walletAddress = wallet.substring(0, 6) + "..." + wallet.substring(wallet.length - 4);
+    } else {
+      maskedRecord.userId.walletAddress = "***";
+    }
+  }
+  
+  // Mask userId to a masked ID reference
+  if (maskedRecord.userId?._id) {
+    maskedRecord.userId._id = "REF-" + maskedRecord.userId._id.toString().substring(0, 8);
+  }
+  
+  return maskedRecord;
+};
+
+// =====================
 // GET ALL ATTENDANCE RECORDS (ADMIN)
 // =====================
 router.get("/all", authMiddleware, roleMiddleware("admin"), async (req, res) => {
@@ -175,7 +250,10 @@ router.get("/all", authMiddleware, roleMiddleware("admin"), async (req, res) => 
       .populate("userId", "username email walletAddress")
       .sort({ date: -1, createdAt: -1 });
 
-    res.json({ records });
+    // Mask sensitive data before sending response
+    const maskedRecords = records.map(record => maskSensitiveData(record.toObject()));
+
+    res.json({ records: maskedRecords });
 
   } catch (err) {
     console.error("Get all attendance error:", err);
@@ -194,7 +272,10 @@ router.get("/employee/:userId", authMiddleware, roleMiddleware("admin"), async (
       .populate("userId", "username email walletAddress")
       .sort({ date: -1 });
 
-    res.json({ records });
+    // Mask sensitive data before sending response
+    const maskedRecords = records.map(record => maskSensitiveData(record.toObject()));
+
+    res.json({ records: maskedRecords });
 
   } catch (err) {
     console.error("Get employee attendance error:", err);
