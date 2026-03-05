@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -49,43 +50,60 @@ export default function OTP() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-100">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg border border-zinc-200 text-zinc-900">
-        <h2 className="mb-2 text-center text-3xl font-bold text-orange-500">
-          Verify OTP
-        </h2>
-        <p className="mb-6 text-center text-sm text-zinc-700">
-          Enter the code sent to your email
-        </p>
+    <div
+      className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 py-8"
+      style={{ fontFamily: "\"Museo Sans\", \"Museo Sans 700\", sans-serif" }}
+    >
+      <div className="w-full max-w-[460px] rounded-2xl border border-zinc-200 bg-white px-4 py-5 text-zinc-900 shadow-[0_10px_22px_rgba(0,0,0,0.08)] sm:px-5 sm:py-6">
+        <div className="mx-auto max-w-[340px]">
+          <div className="mb-2 flex justify-center">
+            <Image
+              src="/emailicon.svg"
+              alt="Email icon"
+              width={140}
+              height={140}
+              priority
+              className="h-[34px] w-[34px] sm:h-[40px] sm:w-[40px]"
+            />
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Enter 6-digit OTP"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            required
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full rounded-lg py-3 font-semibold text-white transition ${
-              loading
-                ? "bg-orange-300 cursor-not-allowed"
-                : "bg-orange-500 hover:bg-orange-600"
-            }`}
-          >
-            {loading ? "Verifying..." : "Verify"}
-          </button>
-        </form>
-
-        {message && (
-          <p className="mt-4 text-center text-sm font-medium text-zinc-700">
-            {message}
+          <h2 className="text-center text-xl font-bold text-black sm:text-2xl">
+            Enter OTP Code
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-[320px] text-center text-xs text-zinc-800 sm:text-sm sm:leading-snug">
+            Please enter the 6-digit code sent to your registered email to
+            complete your verification.
           </p>
-        )}
+
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4 sm:mt-5">
+            <input
+              type="text"
+              placeholder="OTP Code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              required
+              className="h-10 w-full rounded-lg border border-zinc-500 bg-white px-3 text-sm tracking-[0.14em] text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#562F00] focus:ring-2 focus:ring-[#562F00]/20"
+            />
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`h-11 w-full rounded-full text-lg font-bold text-white transition ${
+                loading
+                  ? "cursor-not-allowed bg-[#8b5f2f]"
+                  : "bg-[#562F00] hover:bg-[#6a3a05]"
+              }`}
+            >
+              {loading ? "Verifying..." : "Verify"}
+            </button>
+          </form>
+
+          {message && (
+            <p className="mt-5 text-center text-base font-medium text-zinc-800">
+              {message}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

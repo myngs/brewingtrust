@@ -68,12 +68,27 @@ const transporter = nodemailer.createTransport({
 // =====================
 // SIGNUP
 // =====================
+// Function to generate unique employee ID
+const generateEmployeeId = async () => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+  const employeeId = `EMP-${timestamp}-${random}`;
+  
+  // Check if ID already exists
+  const existing = await User.findOne({ employeeId });
+  if (existing) {
+    // Recursively generate if collision
+    return generateEmployeeId();
+  }
+  return employeeId;
+};
+
 router.post("/signup", async (req, res) => {
   try {
-    const { username, email, password, confirmPassword } = req.body;
+    const { username, email, password, confirmPassword, fullName } = req.body;
 
     // Validate all required fields
-    if (!username || !email || !password || !confirmPassword) {
+    if (!username || !email || !password || !confirmPassword || !fullName) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -112,9 +127,14 @@ router.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(passwordValidation.value, 10);
+    
+    // Auto-generate employee ID
+    const employeeId = await generateEmployeeId();
 
     const newUser = new User({
       username: usernameValidation.value,
+      fullName: fullName.trim(),
+      employeeId: employeeId,
       email: emailValidation.value,
       password: hashedPassword,
       role: "employee" // default role
@@ -122,7 +142,7 @@ router.post("/signup", async (req, res) => {
 
     await newUser.save();
 
-    res.status(201).json({ message: "User created successfully" });
+    res.status(201).json({ message: "User created successfully", employeeId });
 
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -130,9 +150,7 @@ router.post("/signup", async (req, res) => {
 });
 
 
-// =====================
 // LOGIN (SEND OTP)
-// =====================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;

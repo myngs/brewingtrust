@@ -10,6 +10,7 @@ const employees: any[] = [
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
@@ -28,12 +29,12 @@ export default function EmployeesPage() {
         const data = await response.json();
         // Format users for display
         const formattedEmployees = data.users.map((user: any) => ({
-          id: user._id.slice(-9), // Show last 9 chars of ID
-          name: user.username,
+          id: user.employeeId || user._id.slice(-9), // Show employeeId or last 9 chars of ID
+          name: user.fullName || user.username,
           email: user.email,
           role: user.role,
-          supervisor: "N/A", // Could be added to user model later
-          status: user.walletAddress ? "Active" : "Inactive" // Simple status based on wallet
+          supervisor: "N/A",
+          status: user.walletAddress ? "Active" : "Inactive"
         }));
         setEmployees(formattedEmployees);
       }
@@ -55,6 +56,47 @@ export default function EmployeesPage() {
     }
   };
 
+  const escapeCsvValue = (value: unknown) => {
+    const stringValue = String(value ?? "");
+    const escaped = stringValue.replace(/"/g, "\"\"");
+    return `"${escaped}"`;
+  };
+
+  const handleExportCsv = () => {
+    if (!employees.length || exporting) return;
+
+    setExporting(true);
+    try {
+      const headers = ["Employee ID", "Name", "Email", "Role", "Supervisor", "Status"];
+      const rows = employees.map((emp) => [
+        emp.id,
+        emp.name,
+        emp.email,
+        emp.role,
+        emp.supervisor,
+        emp.status
+      ]);
+
+      const csv = [
+        headers.map(escapeCsvValue).join(","),
+        ...rows.map((row) => row.map(escapeCsvValue).join(","))
+      ].join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const date = new Date().toISOString().split("T")[0];
+      link.href = url;
+      link.setAttribute("download", `employees-${date}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -72,8 +114,12 @@ export default function EmployeesPage() {
           <button className="bg-[#8b5a2b] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#7a4a1b] transition">
             + Add Employee
           </button>
-          <button className="bg-white text-[#8b5a2b] border border-[#8b5a2b] px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition">
-            Export CSV
+          <button
+            onClick={handleExportCsv}
+            disabled={!employees.length || exporting}
+            className="bg-white text-[#8b5a2b] border border-[#8b5a2b] px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? "Exporting..." : "Export CSV"}
           </button>
         </div>
       </div>

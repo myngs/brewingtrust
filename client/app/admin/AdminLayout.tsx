@@ -13,6 +13,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-[#f4f2ee] px-6 py-6 text-zinc-900">
+      <div className="mx-auto max-w-7xl mb-4">
+        <div className="rounded-xl bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
+          <p className="text-sm font-semibold text-[#8b5a2b]">Bruno Mars admin</p>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-7xl flex gap-6">
         {/* Sidebar */}
         <aside className="w-72 bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-6 flex flex-col justify-between">
@@ -46,15 +52,52 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 B
               </div>
               <div>
-                <div className="font-semibold text-zinc-900">Bruno Mars</div>
-                <div className="text-sm text-zinc-500">Admin</div>
+                <div className="font-semibold text-zinc-900">Bruno Mars admin</div>
+                <div className="text-sm text-zinc-500">Administrator</div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 mt-3 text-[#e54b3c] cursor-pointer hover:text-red-600">
-              <Image src="/icons/logout.png" alt="Logout" width={20} height={20} />
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("role");
+                window.location.href = "/";
+              }}
+              className="flex items-center gap-2 mt-3 rounded-md p-2 text-[#e54b3c] hover:bg-white/60 w-full text-left"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M10 17l5-5-5-5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M15 12H3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M21 3v18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.5"
+                />
+              </svg>
               <span>Logout</span>
-            </div>
+            </button>
           </div>
         </aside>
 
@@ -87,7 +130,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 B
               </div>
               <div className="text-center text-zinc-900">
-                <p><strong>Name:</strong> Bruno Mars</p>
+                <p><strong>Name:</strong> Bruno Mars admin</p>
                 <p><strong>Email:</strong> admin@brewingtrust.com</p>
                 <p><strong>Role:</strong> Administrator</p>
               </div>

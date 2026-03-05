@@ -23,3 +23,16 @@
 - [x] client/app/blockchain/page.tsx - Add fetchAllRecords function to call the new API
 - [x] client/app/blockchain/page.tsx - Add historical records table to display all past attendance
 - [x] client/app/blockchain/page.tsx - Refresh records after clock in/out operations
+
+## Task 4: Add full name to signup and auto-generate employee ID
+
+- [x] server/models/User.js - Add fullName field
+- [x] server/models/User.js - Add employeeId field
+- [x] client/app/signup/page.tsx - Add fullName input field
+- [x] client/app/signup/page.tsx - Include fullName in API request
+- [x] server/routes/authRoutes.js - Accept fullName in signup and auto-generate employeeId
+- [x] client/app/admin/employees/page.tsx - Display fullName and employeeId from database
+
+## Task 5: Fix admin pages dimensions
+
+- [x] Admin pages dimensions reviewed - layout uses consistent max-w-7xl container
