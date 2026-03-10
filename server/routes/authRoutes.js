@@ -262,6 +262,52 @@ router.post("/verify-otp", async (req, res) => {
 
 
 // =====================
+// RESEND OTP
+// =====================
+router.post("/resend-otp", async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
+    await user.save();
+
+    // Send email with error handling
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL,
+        to: user.email,
+        subject: "Your New Login OTP",
+        text: `Your new OTP code is ${otp}`
+      });
+    } catch (emailErr) {
+      console.error("Email sending error:", emailErr);
+      return res.status(500).json({ message: "Failed to send email. Please try again." });
+    }
+
+    res.json({ message: "New OTP sent to your email" });
+
+  } catch (err) {
+    console.error("Resend OTP error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+
+// =====================
 // ADMIN ROUTE
 // =====================
 router.get(

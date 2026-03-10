@@ -1,14 +1,25 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function OTP() {
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
   const router = useRouter();
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +57,48 @@ export default function OTP() {
       setMessage("Server error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (resendLoading || resendTimer > 0) return;
+    
+    setResendLoading(true);
+    setResendMessage("");
+
+    const userId = localStorage.getItem("tempUserId");
+    
+    if (!userId) {
+      setResendMessage("Session expired. Please login again.");
+      setResendLoading(false);
+      return;
+    }
+
+    try {
+      console.log("Sending resend OTP request for userId:", userId);
+      
+      const res = await fetch("http://localhost:5000/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      console.log("Response status:", res.status);
+      const data = await res.json();
+      console.log("Response data:", data);
+      
+      if (!res.ok) {
+        setResendMessage(data.message || "Failed to resend OTP");
+      } else {
+        setResendMessage(data.message);
+        // Start 60-second timer
+        setResendTimer(60);
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setResendMessage("Network error. Please try again.");
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -103,6 +156,33 @@ export default function OTP() {
               {message}
             </p>
           )}
+
+          {/* Resend OTP Section */}
+          <div className="mt-6 space-y-2">
+            {resendMessage && (
+              <p className="text-center text-sm font-medium text-green-600">
+                {resendMessage}
+              </p>
+            )}
+            
+            <div className="flex justify-center">
+              {resendTimer > 0 ? (
+                <p className="text-sm text-zinc-500">
+                  Resend OTP in <span className="font-semibold text-[#562F00]">{resendTimer}s</span>
+                </p>
+              ) : (
+                <button
+                  onClick={handleResendOTP}
+                  disabled={resendLoading}
+                  className={`text-sm transition hover:text-[#562F00] hover:underline ${
+                    resendLoading ? "cursor-not-allowed text-zinc-400" : "text-[#562F00]"
+                  }`}
+                >
+                  {resendLoading ? "Sending..." : "Resend OTP"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
