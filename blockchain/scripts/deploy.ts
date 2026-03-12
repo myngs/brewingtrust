@@ -16,6 +16,16 @@ async function main() {
     deployer // 👈 IMPORTANT
   );
 
+  // Guard against stale artifacts (older Attendance ABI without hash-based storage).
+  try {
+    Attendance.interface.getFunction("storeAttendanceRecord");
+    Attendance.interface.getFunction("getAttendanceRecord");
+  } catch {
+    throw new Error(
+      'Stale/incorrect Attendance artifact detected. Run "npx hardhat compile" in the blockchain folder, then redeploy.'
+    );
+  }
+
   const attendance = await Attendance.deploy();
   console.log("Deploy transaction sent");
 

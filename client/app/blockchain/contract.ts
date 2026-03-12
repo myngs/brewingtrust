@@ -11,19 +11,25 @@ export const contractABI = [
         "type": "address"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256",
         "name": "date",
         "type": "uint256"
       },
       {
         "indexed": false,
+        "internalType": "bytes32",
+        "name": "recordHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
         "internalType": "uint256",
-        "name": "time",
+        "name": "timestamp",
         "type": "uint256"
       }
     ],
-    "name": "ClockIn",
+    "name": "AttendanceRecordStored",
     "type": "event"
   },
   {
@@ -36,19 +42,25 @@ export const contractABI = [
         "type": "address"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256",
         "name": "date",
         "type": "uint256"
       },
       {
         "indexed": false,
+        "internalType": "bytes32",
+        "name": "recordHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
         "internalType": "uint256",
-        "name": "time",
+        "name": "timestamp",
         "type": "uint256"
       }
     ],
-    "name": "ClockOut",
+    "name": "AttendanceRecordUpdated",
     "type": "event"
   },
   {
@@ -57,22 +69,14 @@ export const contractABI = [
         "internalType": "uint256",
         "name": "date",
         "type": "uint256"
-      }
-    ],
-    "name": "clockIn",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
-        "internalType": "uint256",
-        "name": "date",
-        "type": "uint256"
+        "internalType": "bytes32",
+        "name": "recordHash",
+        "type": "bytes32"
       }
     ],
-    "name": "clockOut",
+    "name": "storeAttendanceRecord",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -90,17 +94,70 @@ export const contractABI = [
         "type": "uint256"
       }
     ],
-    "name": "getRecord",
+    "name": "getAttendanceRecord",
     "outputs": [
       {
-        "internalType": "uint256",
-        "name": "clockIn",
-        "type": "uint256"
+        "internalType": "bytes32",
+        "name": "recordHash",
+        "type": "bytes32"
       },
       {
         "internalType": "uint256",
-        "name": "clockOut",
+        "name": "timestamp",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "date",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "recordHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "verifyRecordHash",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "date",
+        "type": "uint256"
+      }
+    ],
+    "name": "getMyRecordHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",

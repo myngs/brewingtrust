@@ -1,0 +1,47 @@
+[
+  {
+    "id": "69957b441d35edbb22b9b4be_20260310",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260310",
+    "clockIn": 1773154857,
+    "clockOut": 1773154940,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-10T15:00:57.578Z",
+      "updatedAt": "2026-03-10T15:02:20.024Z"
+    },
+    "hash": "6fbe804771cd8941a7827f9b9702fecf350026bc890ed1980a3ef173bd107489"
+  },
+  {
+    "id": "69957b441d35edbb22b9b4be_20260311",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260311",
+    "clockIn": 1773205644,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-11T01:22:44.038Z",
+      "updatedAt": "2026-03-11T05:07:24.979Z"
+    },
+    "hash": "8da796a7a1f7cc401e7518f2f6b2873ba6f8090e7b487d2bfaeef180c426cf82"
+  },
+  {
+    "id": "69957b441d35edbb22b9b4be_20260312",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260312",
+    "clockIn": 1773315460,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-12T03:45:18.896Z",
+      "updatedAt": "2026-03-12T11:37:40.206Z"
+    },
+    "hash": "a1f76bc37ea7fa1ca948417d70255e7523f44fbdefaa59be178888dea688e360"
+  }
+]

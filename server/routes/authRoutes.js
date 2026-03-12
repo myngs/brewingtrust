@@ -247,13 +247,15 @@ router.post("/verify-otp", async (req, res) => {
     const token = jwt.sign(
       {
         id: user._id,
-        role: user.role  // 🔥 ROLE INCLUDED
+        role: user.role,
+        username: user.username,  // 🔥 USERNAME INCLUDED
+        email: user.email
       },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    res.json({ token, role: user.role });
+    res.json({ token, role: user.role, username: user.username });
 
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
