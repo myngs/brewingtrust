@@ -54,6 +54,18 @@ const userSchema = new mongoose.Schema({
   lockUntil: {
     type: Date,
     default: null
+  },
+  passwordResetOtpHash: {
+    type: String
+  },
+  passwordResetOtpExpires: {
+    type: Date
+  },
+  passwordResetGrantId: {
+    type: String
+  },
+  passwordResetGrantExpires: {
+    type: Date
   }
 
 });

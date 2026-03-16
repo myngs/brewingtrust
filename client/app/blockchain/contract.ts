@@ -1,4 +1,6 @@
-export const contractAddress = "0xa60Cf04F07b29E7bcA1190D393351F3e67bB6Dff";
+export const contractAddress =
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+  "0xa60Cf04F07b29E7bcA1190D393351F3e67bB6Dff";
 
 export const contractABI = [
   {
@@ -77,6 +79,29 @@ export const contractABI = [
       }
     ],
     "name": "storeAttendanceRecord",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "date",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "recordHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "storeAttendanceRecordFor",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

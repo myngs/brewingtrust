@@ -1,6 +1,7 @@
 // Input sanitization library
 const sanitizeHtml = require("sanitize-html");
 
+const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -20,7 +21,8 @@ const router = express.Router();
 const VALIDATION_PATTERNS = {
   username: /^[a-zA-Z0-9_]{3,20}$/,
   email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+  password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+  otp: /^\d{6}$/
 };
 
 // Sanitization function
@@ -85,11 +87,21 @@ const generateEmployeeId = async () => {
 
 router.post("/signup", async (req, res) => {
   try {
-    const { username, email, password, confirmPassword, fullName } = req.body;
+    const body = req.body || {};
+    const { username, email, password, confirmPassword, fullName } = body;
 
-    // Validate all required fields
-    if (!username || !email || !password || !confirmPassword || !fullName) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Validate all required fields (treat empty/whitespace as missing)
+    const missingFields = [];
+    if (!sanitizeInput(username)) missingFields.push("username");
+    if (!sanitizeInput(email)) missingFields.push("email");
+    if (!sanitizeInput(password)) missingFields.push("password");
+    if (!sanitizeInput(confirmPassword)) missingFields.push("confirmPassword");
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Missing required fields: ${missingFields.join(", ")}`,
+        missingFields
+      });
     }
 
     // Validate username (alphanumeric + underscore, 3-20 chars)
@@ -133,12 +145,17 @@ router.post("/signup", async (req, res) => {
 
     const newUser = new User({
       username: usernameValidation.value,
-      fullName: fullName.trim(),
       employeeId: employeeId,
       email: emailValidation.value,
       password: hashedPassword,
       role: "employee" // default role
     });
+
+    // Optional: keep accepting fullName for backward compatibility with older clients
+    const sanitizedFullName = sanitizeInput(fullName);
+    if (sanitizedFullName) {
+      newUser.fullName = sanitizedFullName;
+    }
 
     await newUser.save();
 
@@ -351,5 +368,193 @@ router.get(
   }
 );
 
+
+// =====================
+// FORGOT / RESET PASSWORD (OTP-based)
+// =====================
+
+const createPurposeToken = (payload, expiresIn) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
+};
+
+const verifyPurposeToken = (token) => {
+  return jwt.verify(token, process.env.JWT_SECRET);
+};
+
+const forgotPasswordHandler = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const emailValidation = validateField("Email", body.email, VALIDATION_PATTERNS.email);
+
+    const genericMessage = "If an account exists, a verification code has been sent to the email.";
+
+    if (!emailValidation.valid) {
+      return res.status(400).json({ message: emailValidation.message });
+    }
+
+    const user = await User.findOne({ email: emailValidation.value });
+
+    const resetToken = createPurposeToken(
+      { id: user?._id?.toString(), purpose: "password_reset" },
+      "10m"
+    );
+
+    if (!user) {
+      return res.json({ message: genericMessage, resetToken });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    user.passwordResetOtpHash = otpHash;
+    user.passwordResetOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.passwordResetGrantId = null;
+    user.passwordResetGrantExpires = null;
+    await user.save();
+
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL,
+        to: user.email,
+        subject: "Password Reset Code",
+        text: `Your password reset code is ${otp}. This code expires in 10 minutes.`
+      });
+    } catch (emailErr) {
+      console.error("Password reset email sending error:", emailErr);
+      return res.status(500).json({ message: "Failed to send reset code. Please try again." });
+    }
+
+    return res.json({ message: genericMessage, resetToken });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+const verifyForgotPasswordOtpHandler = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const resetToken = sanitizeInput(body.resetToken);
+    const otp = sanitizeInput(body.otp);
+
+    const invalidMessage = "Invalid or expired code";
+
+    if (!resetToken) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    const otpValidation = validateField("OTP", otp, VALIDATION_PATTERNS.otp);
+    if (!otpValidation.valid) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    let decoded;
+    try {
+      decoded = verifyPurposeToken(resetToken);
+    } catch {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    if (!decoded || decoded.purpose !== "password_reset" || !decoded.id) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    if (!user.passwordResetOtpHash || !user.passwordResetOtpExpires || user.passwordResetOtpExpires < new Date()) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    const ok = await bcrypt.compare(otpValidation.value, user.passwordResetOtpHash);
+    if (!ok) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    const grantId = crypto.randomBytes(16).toString("hex");
+    user.passwordResetGrantId = grantId;
+    user.passwordResetGrantExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.passwordResetOtpHash = null;
+    user.passwordResetOtpExpires = null;
+    await user.save();
+
+    const resetGrantToken = createPurposeToken(
+      { id: user._id.toString(), purpose: "password_reset_grant", gid: grantId },
+      "10m"
+    );
+
+    return res.json({ message: "Code verified", resetGrantToken });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+const resetPasswordHandler = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const resetGrantToken = sanitizeInput(body.resetGrantToken);
+    const password = sanitizeInput(body.password);
+    const confirmPassword = sanitizeInput(body.confirmPassword);
+
+    const invalidMessage = "Invalid or expired reset session";
+
+    if (!resetGrantToken) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    let decoded;
+    try {
+      decoded = verifyPurposeToken(resetGrantToken);
+    } catch {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    if (!decoded || decoded.purpose !== "password_reset_grant" || !decoded.id || !decoded.gid) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    const passwordValidation = validateField("Password", password, VALIDATION_PATTERNS.password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    if (!user.passwordResetGrantId || !user.passwordResetGrantExpires || user.passwordResetGrantExpires < new Date()) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    if (user.passwordResetGrantId !== decoded.gid) {
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    const hashedPassword = await bcrypt.hash(passwordValidation.value, 10);
+    user.password = hashedPassword;
+    user.passwordResetGrantId = null;
+    user.passwordResetGrantExpires = null;
+    await user.save();
+
+    return res.json({ message: "Password reset successful" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+router.post("/forgot-password", forgotPasswordHandler);
+router.post("/forget-password", forgotPasswordHandler);
+router.post("/forgot-password/verify", verifyForgotPasswordOtpHandler);
+router.post("/forget-password/verify", verifyForgotPasswordOtpHandler);
+router.post("/forgot-password/reset", resetPasswordHandler);
+router.post("/forget-password/reset", resetPasswordHandler);
 
 module.exports = router;

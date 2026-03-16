@@ -1,61 +1,98 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type AnomalyRow = {
+  employee_id: string;
+  clock_in_time: string;
+  clock_out_time: string;
+  clock_in_hour: number;
+  clock_out_hour: number;
+  shift_length: number;
+  anomaly_flag: number;
+};
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 export default function AnomalyPage() {
-  const [flagged, setFlagged] = useState<any[]>([]);
+  const [results, setResults] = useState<AnomalyRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const anomalies = useMemo(
+    () => results.filter((r) => r.anomaly_flag === -1),
+    [results]
+  );
 
   useEffect(() => {
-    fetchFlaggedRecords();
+    fetchLatest();
   }, []);
 
-  const fetchFlaggedRecords = async () => {
+  const authHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      Authorization: `Bearer ${token}`
+    };
+  };
+
+  const fetchLatest = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/attendance/all", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      const response = await fetch(`${API_BASE}/api/anomaly/latest`, {
+        headers: authHeaders()
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Filter for anomalous records
-        const anomalousRecords = data.records
-          .filter((record: any) =>
-            !record.clockOut || // No clock out
-            record.totalHours > 12 || // Overtime
-            record.totalHours < 0 || // Invalid hours
-            (record.clockIn && !record.clockOut && (Date.now() / 1000 - record.clockIn) > 12 * 3600) // Clocked in > 12 hours ago without clocking out
-          )
-          .slice(0, 10) // Show recent 10
-          .map((record: any) => ({
-            id: record.userId.username,
-            date: record.date,
-            reason: !record.clockOut ? "No clock out" :
-                   record.totalHours > 12 ? "Excessive hours" :
-                   record.totalHours < 0 ? "Invalid hours" :
-                   "Long session without clock out"
-          }));
-        setFlagged(anomalousRecords);
+      if (!response.ok) {
+        // 404 is expected if no scan has run yet.
+        setResults([]);
+        return;
       }
-    } catch (err) {
-      console.error("Error fetching flagged records:", err);
+
+      const data = await response.json();
+      setResults((data.results || []) as AnomalyRow[]);
+    } catch (err: any) {
+      console.error("Error fetching latest anomaly results:", err);
+      setError("Failed to load anomaly results.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = (empId: string) => {
-    alert(`Attendance for ${empId} has been approved.`);
-    // You can replace alert with API call or state update
+  const runScanNow = async () => {
+    setRunning(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/anomaly/run`, {
+        headers: authHeaders()
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data?.message || "AI scan failed.");
+        return;
+      }
+
+      setResults((data.results || []) as AnomalyRow[]);
+    } catch (err: any) {
+      console.error("Error running anomaly scan:", err);
+      setError("Failed to run anomaly scan.");
+    } finally {
+      setRunning(false);
+    }
   };
 
-  const handleReject = (empId: string) => {
-    alert(`Attendance for ${empId} has been rejected.`);
-    // You can replace alert with API call or state update
+  const handleApprove = (employeeId: string) => {
+    alert(`Attendance anomaly for ${employeeId} approved.`);
+  };
+
+  const handleReject = (employeeId: string) => {
+    alert(`Attendance anomaly for ${employeeId} rejected.`);
   };
 
   return (
@@ -63,54 +100,101 @@ export default function AnomalyPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="text-sm font-semibold text-[#8b5a2b] mb-2">Brewing Trust Admin</div>
-        <h1 className="text-3xl font-extrabold text-zinc-900">Anomaly Detection: Review Required</h1>
+        <h1 className="text-3xl font-extrabold text-zinc-900">AI Anomaly Detection</h1>
+        <div className="text-sm text-zinc-600 mt-2">
+          Runs Isolation Forest on clock-in/out patterns and flags unusual shifts.
+        </div>
       </div>
 
       <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-[#8b5a2b] rounded-full flex items-center justify-center">
-            <Image src="/icons/anomaly.png" alt="Anomaly icon" width={16} height={16} className="filter brightness-0 invert" />
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#8b5a2b] rounded-full flex items-center justify-center">
+              <Image
+                src="/icons/anomaly.png"
+                alt="Anomaly icon"
+                width={16}
+                height={16}
+                className="filter brightness-0 invert"
+              />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-zinc-900">Flagged Shifts</h3>
+              <div className="text-sm text-zinc-600">{anomalies.length} anomalies flagged</div>
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-zinc-900">Flagged Attendance Records</h3>
+
+          <div className="flex items-center gap-3">
+            <button
+              className="px-4 py-2 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-800 font-medium"
+              onClick={fetchLatest}
+              disabled={loading || running}
+            >
+              Refresh
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-[#8b5a2b] hover:bg-[#744a23] text-white font-semibold"
+              onClick={runScanNow}
+              disabled={running}
+            >
+              {running ? "Running AI..." : "Run AI Scan"}
+            </button>
+          </div>
         </div>
 
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee ID</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Time & Date</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Flagged Reason</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flagged.length > 0 ? flagged.map((a, i) => (
-              <tr key={i} className="border-b border-gray-100">
-                <td className="py-4 px-4 text-zinc-700">{a.id}</td>
-                <td className="py-4 px-4 text-zinc-700">{a.date}</td>
-                <td className="py-4 px-4 text-zinc-700">{a.reason}</td>
-                <td className="py-4 px-4">
-                  <button
-                    className="bg-green-500 text-white px-3 py-1 rounded mr-2 hover:bg-green-600 font-medium"
-                    onClick={() => handleApprove(a.id)}
-                  >
-                    ✔
-                  </button>
-                  <button
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 font-medium"
-                    onClick={() => handleReject(a.id)}
-                  >
-                    ✖
-                  </button>
-                </td>
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="py-12 text-center text-zinc-500">Loading...</div>
+        ) : anomalies.length === 0 ? (
+          <div className="py-12 text-center text-zinc-500">
+            No anomalies flagged. Click "Run AI Scan" to analyze recent attendance logs.
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock In</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock Out</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Shift (hrs)</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Action</th>
               </tr>
-            )) : (
-              <tr>
-                <td colSpan={4} className="py-8 px-4 text-center text-zinc-500">No flagged records to review</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {anomalies.map((a, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="py-4 px-4 text-zinc-700 font-medium">{a.employee_id}</td>
+                  <td className="py-4 px-4 text-zinc-700">{a.clock_in_time}</td>
+                  <td className="py-4 px-4 text-zinc-700">{a.clock_out_time}</td>
+                  <td className="py-4 px-4 text-zinc-700">{a.shift_length?.toFixed?.(2) ?? a.shift_length}</td>
+                  <td className="py-4 px-4">
+                    <button
+                      className="bg-green-500 text-white px-3 py-1 rounded mr-2 hover:bg-green-600 font-medium"
+                      onClick={() => handleApprove(a.employee_id)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 font-medium"
+                      onClick={() => handleReject(a.employee_id)}
+                    >
+                      Reject
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        <div className="mt-6 text-xs text-zinc-500">
+          Tip: Set `PYTHON_BIN` in `server/.env` if your Python executable isn\'t on PATH.
+        </div>
       </div>
     </div>
   );

@@ -19,6 +19,7 @@ async function main() {
   // Guard against stale artifacts (older Attendance ABI without hash-based storage).
   try {
     Attendance.interface.getFunction("storeAttendanceRecord");
+    Attendance.interface.getFunction("storeAttendanceRecordFor");
     Attendance.interface.getFunction("getAttendanceRecord");
   } catch {
     throw new Error(

@@ -8,6 +8,26 @@ pragma solidity ^0.8.20;
  *      Actual attendance data (clock-in/clock-out times) are stored off-chain
  */
 contract Attendance {
+    address public owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+        emit OwnershipTransferred(address(0), msg.sender);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "New owner is the zero address");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
     // Struct to store attendance record reference (hash)
     struct RecordReference {
         bytes32 recordHash;    // Hash of the attendance record stored off-chain
@@ -34,29 +54,45 @@ contract Attendance {
         uint256 timestamp
     );
 
+    function _store(address user, uint256 date, bytes32 recordHash) internal {
+        require(user != address(0), "User cannot be zero address");
+        require(recordHash != bytes32(0), "Record hash cannot be empty");
+
+        RecordReference storage ref = recordReferences[user][date];
+
+        if (ref.exists) {
+            // Update existing record
+            ref.recordHash = recordHash;
+            ref.timestamp = block.timestamp;
+            emit AttendanceRecordUpdated(user, date, recordHash, block.timestamp);
+        } else {
+            // Create new record reference
+            ref.exists = true;
+            ref.recordHash = recordHash;
+            ref.timestamp = block.timestamp;
+            emit AttendanceRecordStored(user, date, recordHash, block.timestamp);
+        }
+    }
+
     /**
      * @notice Store attendance record reference (hash) on blockchain
      * @dev This stores only a hash that references off-chain attendance data
      * @param date The date in YYYYMMDD format
      * @param recordHash The SHA-256 hash of the attendance record stored off-chain
      */
-    function storeAttendanceRecord(uint256 date, bytes32 recordHash) external {
-        require(recordHash != bytes32(0), "Record hash cannot be empty");
-        
-        RecordReference storage ref = recordReferences[msg.sender][date];
-        
-        if (ref.exists) {
-            // Update existing record
-            ref.recordHash = recordHash;
-            ref.timestamp = block.timestamp;
-            emit AttendanceRecordUpdated(msg.sender, date, recordHash, block.timestamp);
-        } else {
-            // Create new record reference
-            ref.exists = true;
-            ref.recordHash = recordHash;
-            ref.timestamp = block.timestamp;
-            emit AttendanceRecordStored(msg.sender, date, recordHash, block.timestamp);
-        }
+    function storeAttendanceRecord(uint256 date, bytes32 recordHash) external onlyOwner {
+        _store(msg.sender, date, recordHash);
+    }
+
+    /**
+     * @notice Store attendance record reference (hash) on blockchain for a specific user
+     * @dev Only the contract owner (your backend wallet) can write on-chain in this mode.
+     * @param user The wallet address that the record should be associated with
+     * @param date The date in YYYYMMDD format
+     * @param recordHash The SHA-256 hash of the attendance record stored off-chain
+     */
+    function storeAttendanceRecordFor(address user, uint256 date, bytes32 recordHash) external onlyOwner {
+        _store(user, date, recordHash);
     }
 
     /**

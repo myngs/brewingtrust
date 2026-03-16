@@ -55,6 +55,17 @@ const CONTRACT_ABI = [
   {
     "inputs": [
       { "internalType": "address", "name": "user", "type": "address" },
+      { "internalType": "uint256", "name": "date", "type": "uint256" },
+      { "internalType": "bytes32", "name": "recordHash", "type": "bytes32" }
+    ],
+    "name": "storeAttendanceRecordFor",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "user", "type": "address" },
       { "internalType": "uint256", "name": "date", "type": "uint256" }
     ],
     "name": "getAttendanceRecord",
@@ -225,6 +236,7 @@ async function storeAttendanceOnChain(userWalletAddress, date, recordHash) {
     console.log('=== BLOCKCHAIN TRANSACTION START ===');
     console.log('RPC_URL:', RPC_URL);
     console.log('CONTRACT_ADDRESS:', CONTRACT_ADDRESS);
+    console.log('User wallet address:', userWalletAddress);
     
     // Initialize if not already
     if (!isInitialized) {
@@ -252,7 +264,15 @@ async function storeAttendanceOnChain(userWalletAddress, date, recordHash) {
       return { success: false, error: `Invalid date (expected YYYYMMDD number): "${date}"` };
     }
     console.log('Date (uint256):', dateUint);
-    
+
+    if (!userWalletAddress) {
+      return { success: false, error: 'Missing userWalletAddress (expected an Ethereum address)' };
+    }
+    const normalizedUserWalletAddress = normalizeAddress(
+      userWalletAddress,
+      'userWalletAddress'
+    );
+
     if (!isSha256Hex(recordHash)) {
       return { success: false, error: `Invalid recordHash (expected 32-byte hex / sha256): "${recordHash}"` };
     }
@@ -264,7 +284,13 @@ async function storeAttendanceOnChain(userWalletAddress, date, recordHash) {
     console.log('Sending transaction to blockchain...');
     
     const tx = await withRetry(
-      () => contract.storeAttendanceRecord(dateUint, hashBytes32, { gasLimit: 500000 }),
+      () =>
+        contract.storeAttendanceRecordFor(
+          normalizedUserWalletAddress,
+          dateUint,
+          hashBytes32,
+          { gasLimit: 500000 }
+        ),
       {
         retries: 2,
         isRetriable: (message) =>
