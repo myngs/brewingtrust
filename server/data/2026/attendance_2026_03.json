@@ -88,5 +88,50 @@
       "updatedAt": "2026-03-15T00:54:28.087Z"
     },
     "hash": "16f8561cca66270f7ffa783e90eedbededf7d43ef2ca10210bea919da60fc53b"
+  },
+  {
+    "id": "69957b441d35edbb22b9b4be_20260316",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260316",
+    "clockIn": 1773643569,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-16T04:59:24.825Z",
+      "updatedAt": "2026-03-16T06:46:09.601Z"
+    },
+    "hash": "5aaba20fe6bb2e63c8b9ed2f6774bfbb3b39b6a92bb9ff4cedda2cbbf61346a5"
+  },
+  {
+    "id": "EMP-MMSU1Z0F-A18_20260316",
+    "employeeId": "EMP-MMSU1Z0F-A18",
+    "date": "20260316",
+    "clockIn": 1773644455,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69b7aa428cbd8fa17dd285c2",
+      "username": "jrpmc",
+      "createdAt": "2026-03-16T07:00:55.421Z",
+      "updatedAt": "2026-03-16T07:00:55.421Z"
+    },
+    "hash": "a97fcdfc8f21faa4eac7d2768cbfea63b31e51ee40df4ef6f70a8777a4e24e2a"
+  },
+  {
+    "id": "EMP-MMSUDGET-SHI_20260316",
+    "employeeId": "EMP-MMSUDGET-SHI",
+    "date": "20260316",
+    "clockIn": 1773645095,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69b7ac5a8cbd8fa17dd285e9",
+      "username": "kyllene",
+      "createdAt": "2026-03-16T07:11:35.348Z",
+      "updatedAt": "2026-03-16T07:11:35.348Z"
+    },
+    "hash": "873dc2d466241eefc3e7adddb183e1af7da3c4bd49b8a2b90318d6a96dbbeaca"
   }
 ]

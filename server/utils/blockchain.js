@@ -21,6 +21,20 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY || '';
 // Contract ABI - Updated for hash-based storage
 const CONTRACT_ABI = [
   {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "address", "name": "user", "type": "address" },
@@ -100,6 +114,7 @@ const CONTRACT_ABI = [
 let provider;
 let contract;
 let wallet;
+let contractOwner;
 let isInitialized = false;
 
 function normalizePrivateKey(value) {
@@ -122,6 +137,16 @@ function normalizeAddress(value, envName) {
 
 function formatRpcHint(message) {
   return `${message} (check Ganache/Hardhat node is running and BLOCKCHAIN_RPC_URL is correct)`;
+}
+
+function summarizeEthersError(err) {
+  if (!err) return '';
+  const parts = [];
+  if (err.shortMessage) parts.push(err.shortMessage);
+  if (err.reason) parts.push(`reason=${err.reason}`);
+  if (err.code) parts.push(`code=${err.code}`);
+  if (err.info && err.info.error && err.info.error.message) parts.push(err.info.error.message);
+  return parts.filter(Boolean).join(' | ');
 }
 
 /**
@@ -179,6 +204,35 @@ async function initializeBlockchain() {
       }
       
       console.log('Connected to contract at:', normalizedContractAddress);
+
+      // Sanity-check that CONTRACT_ADDRESS points to the expected Attendance contract.
+      // (If you updated the Solidity and didn't redeploy, eth_call will typically revert with "missing revert data".)
+      try {
+        await contract.getAttendanceRecord(wallet ? wallet.address : ethers.ZeroAddress, 0);
+      } catch (shapeErr) {
+        throw new Error(
+          `CONTRACT_ADDRESS=${normalizedContractAddress} does not match the expected Attendance contract ABI. ` +
+            'Fix: recompile + redeploy the Attendance contract and update CONTRACT_ADDRESS in both `blockchain/.env` and `server/.env`.'
+        );
+      }
+
+      // Helpful diagnostics: who is the on-chain owner for onlyOwner writes?
+      // If this read fails, it usually also indicates an ABI/address mismatch, so surface a strong hint.
+      try {
+        contractOwner = await contract.owner();
+        console.log('Contract owner:', contractOwner);
+        if (wallet && contractOwner.toLowerCase() !== wallet.address.toLowerCase()) {
+          console.warn(
+            `WARNING: PRIVATE_KEY wallet (${wallet.address}) is NOT the contract owner (${contractOwner}). ` +
+              'Any write call protected by onlyOwner (e.g. storeAttendanceRecordFor) will revert.'
+          );
+        }
+      } catch (ownerErr) {
+        throw new Error(
+          'Could not read contract owner(). This usually means CONTRACT_ADDRESS is pointing to an older/different contract. ' +
+            'Fix: recompile + redeploy Attendance.sol and update CONTRACT_ADDRESS.'
+        );
+      }
     }
     
     isInitialized = true;
@@ -258,6 +312,24 @@ async function storeAttendanceOnChain(userWalletAddress, date, recordHash) {
     }
     
     console.log('Wallet address:', wallet.address);
+
+    // The Attendance contract uses onlyOwner for writes; fail fast with a clear message
+    // instead of sending a tx that will revert.
+    try {
+      if (!contractOwner) contractOwner = await contract.owner();
+      if (contractOwner && contractOwner.toLowerCase() !== wallet.address.toLowerCase()) {
+        return {
+          success: false,
+          error:
+            `Not owner: PRIVATE_KEY wallet (${wallet.address}) != contract owner (${contractOwner}). ` +
+            'Fix: set server PRIVATE_KEY to the deployer/owner wallet, or call transferOwnership(newOwner) ' +
+            'from the current owner to your server wallet address.'
+        };
+      }
+    } catch (ownerErr) {
+      // If we cannot read owner(), continue and let the tx error surface.
+      console.warn('Owner precheck skipped (owner() read failed):', summarizeEthersError(ownerErr) || ownerErr?.message);
+    }
     
     const dateUint = parseInt(String(date), 10);
     if (!Number.isFinite(dateUint)) {
@@ -320,7 +392,9 @@ async function storeAttendanceOnChain(userWalletAddress, date, recordHash) {
     };
   } catch (error) {
     console.error('=== BLOCKCHAIN TRANSACTION FAILED ===');
-    const message = (error && error.message) ? error.message : String(error);
+    const message =
+      summarizeEthersError(error) ||
+      ((error && error.message) ? error.message : String(error));
     const hintedMessage = /socket hang up/i.test(message) ? formatRpcHint(message) : message;
     console.error('Error:', hintedMessage);
     console.error('=====================================');

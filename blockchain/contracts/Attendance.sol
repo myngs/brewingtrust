@@ -32,7 +32,6 @@ contract Attendance {
     struct RecordReference {
         bytes32 recordHash;    // Hash of the attendance record stored off-chain
         uint256 timestamp;     // When the record was stored on blockchain
-        bool exists;           // Whether a record exists for this date
     }
 
     // user address => date (YYYYMMDD) => RecordReference
@@ -59,18 +58,18 @@ contract Attendance {
         require(recordHash != bytes32(0), "Record hash cannot be empty");
 
         RecordReference storage ref = recordReferences[user][date];
+        uint256 ts = block.timestamp;
 
-        if (ref.exists) {
+        if (ref.recordHash != bytes32(0)) {
             // Update existing record
             ref.recordHash = recordHash;
-            ref.timestamp = block.timestamp;
-            emit AttendanceRecordUpdated(user, date, recordHash, block.timestamp);
+            ref.timestamp = ts;
+            emit AttendanceRecordUpdated(user, date, recordHash, ts);
         } else {
             // Create new record reference
-            ref.exists = true;
             ref.recordHash = recordHash;
-            ref.timestamp = block.timestamp;
-            emit AttendanceRecordStored(user, date, recordHash, block.timestamp);
+            ref.timestamp = ts;
+            emit AttendanceRecordStored(user, date, recordHash, ts);
         }
     }
 
@@ -108,8 +107,10 @@ contract Attendance {
         view
         returns (bytes32 recordHash, uint256 timestamp, bool exists)
     {
-        RecordReference memory ref = recordReferences[user][date];
-        return (ref.recordHash, ref.timestamp, ref.exists);
+        RecordReference storage ref = recordReferences[user][date];
+        recordHash = ref.recordHash;
+        timestamp = ref.timestamp;
+        exists = (recordHash != bytes32(0));
     }
 
     /**
@@ -124,8 +125,9 @@ contract Attendance {
         view
         returns (bool)
     {
-        RecordReference memory ref = recordReferences[user][date];
-        return ref.exists && ref.recordHash == recordHash;
+        RecordReference storage ref = recordReferences[user][date];
+        bytes32 stored = ref.recordHash;
+        return stored != bytes32(0) && stored == recordHash;
     }
 
     /**
