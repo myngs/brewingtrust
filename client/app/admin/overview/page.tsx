@@ -73,12 +73,20 @@ export default function OverviewPage() {
       const users = usersPayload.users || [];
       const records = attendancePayload.records || [];
 
-      const today = new Date().toISOString().split("T")[0];
+      // Today in YYYYMMDD format to match attendance JSON (e.g., "20260318")
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const today = `${yyyy}${mm}${dd}`;
 
-      const totalStaff = users.filter((u) => u.role === "employee").length;
+      // Count all non-admin accounts as staff (includes employees, supervisors, etc.)
+      const totalStaff = users.filter((u) => u.role !== "admin").length;
+
+      // Active Today: employees who have actually clocked in today
       const activeTodayEmployees = new Set(
         records
-          .filter((r) => r.date === today && (typeof r.clockIn === "number" || r.status === "clocked-in" || r.status === "completed"))
+          .filter((r) => r.date === today && typeof r.clockIn === "number")
           .map((r) => r.userId?._id || r.userId?.employeeId || r.userId?.username)
           .filter(Boolean)
       );
@@ -180,42 +188,7 @@ export default function OverviewPage() {
         </table>
       </div>
 
-      <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-        <h3 className="text-xl font-bold text-zinc-900 mb-6">Attendance Feed</h3>
-
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Date</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock In</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock Out</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="py-8 px-4 text-center text-zinc-500">Loading...</td>
-              </tr>
-            ) : attendance.length > 0 ? (
-              attendance.map((a, i) => (
-                <tr key={i} className="border-b border-gray-100">
-                  <td className="py-4 px-4 text-zinc-700">{a.employee}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.date}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.clockIn ?? "—"}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.clockOut ?? "—"}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.status}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="py-8 px-4 text-center text-zinc-500">No attendance records available</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Attendance Feed removed as requested */}
     </div>
   );
 }

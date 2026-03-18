@@ -13,17 +13,56 @@ type AnomalyRow = {
   anomaly_flag: number;
 };
 
+// Derive a human-readable explanation of why a shift is anomalous
+const describeAnomaly = (row: AnomalyRow): string => {
+  const reasons: string[] = [];
+
+  if (row.clock_in_hour < 5) {
+    reasons.push("Very early clock-in time");
+  } else if (row.clock_in_hour > 11) {
+    reasons.push("Unusually late clock-in time");
+  }
+
+  if (row.clock_out_hour < 10) {
+    reasons.push("Unusually early clock-out time");
+  } else if (row.clock_out_hour > 21) {
+    reasons.push("Very late clock-out time");
+  }
+
+  if (row.shift_length > 10) {
+    reasons.push("Long shift (possible overtime)");
+  } else if (row.shift_length < 3) {
+    reasons.push("Very short shift");
+  }
+
+  if (!reasons.length) {
+    reasons.push("Unusual pattern compared to normal shifts");
+  }
+
+  return reasons.join("; ");
+};
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
-// Helper function to format date as M/D/YYYY
+// Helper function to format date as M-D-YYYY (e.g., "3-18-2026")
 const formatDate = (dateString: string): string => {
   if (!dateString) return "—";
+
+  // If backend ever sends YYYYMMDD (e.g., "20260318"), handle it explicitly
+  if (/^\d{8}$/.test(dateString)) {
+    const year = Number(dateString.slice(0, 4));
+    const month = Number(dateString.slice(4, 6));
+    const day = Number(dateString.slice(6, 8));
+    return `${month}-${day}-${year}`;
+  }
+
   try {
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return dateString;
     const month = date.getMonth() + 1;
     const day = date.getDate();
     const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
+    return `${month}-${day}-${year}`;
   } catch {
     return dateString;
   }
@@ -109,13 +148,9 @@ export default function AnomalyPage() {
     }
   };
 
-  const handleApprove = (employeeId: string) => {
-    alert(`Attendance anomaly for ${employeeId} approved.`);
-  };
-
-  const handleReject = (employeeId: string) => {
-    alert(`Attendance anomaly for ${employeeId} rejected.`);
-  };
+  // Note: We intentionally do not provide approve/reject actions here.
+  // The AI's role is to detect and describe anomalies; final decisions
+  // are left to the human admin based on the explanation.
 
   return (
     <div>
@@ -184,30 +219,17 @@ export default function AnomalyPage() {
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock In</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock Out</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Shift (hrs)</th>
-                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Action</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Why flagged?</th>
               </tr>
             </thead>
             <tbody>
               {anomalies.map((a, i) => (
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-4 px-4 text-zinc-700 font-medium">{a.employee_id}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.clock_in_time}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.clock_out_time}</td>
+                  <td className="py-4 px-4 text-zinc-700">{formatDate(a.clock_in_time)}</td>
+                  <td className="py-4 px-4 text-zinc-700">{formatDate(a.clock_out_time)}</td>
                   <td className="py-4 px-4 text-zinc-700">{a.shift_length?.toFixed?.(2) ?? a.shift_length}</td>
-                  <td className="py-4 px-4">
-                    <button
-                      className="bg-green-500 text-white px-3 py-1 rounded mr-2 hover:bg-green-600 font-medium"
-                      onClick={() => handleApprove(a.employee_id)}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 font-medium"
-                      onClick={() => handleReject(a.employee_id)}
-                    >
-                      Reject
-                    </button>
-                  </td>
+                  <td className="py-4 px-4 text-zinc-700 text-sm">{describeAnomaly(a)}</td>
                 </tr>
               ))}
             </tbody>
