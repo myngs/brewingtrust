@@ -384,6 +384,13 @@ router.get("/my-records", authMiddleware, roleMiddleware("employee"), async (req
 // Helper function to mask sensitive data
 const maskSensitiveData = (record) => {
   const maskedRecord = { ...record };
+
+  const maskNamePart = (part) => {
+    if (!part) return part;
+    const trimmed = String(part).trim();
+    if (!trimmed) return trimmed;
+    return `${trimmed[0]}****`;
+  };
   
   // Mask username (show first 2 chars + asterisks)
   if (maskedRecord.userId?.username) {
@@ -391,6 +398,18 @@ const maskSensitiveData = (record) => {
     maskedRecord.userId.username = username.length > 2 
       ? username.substring(0, 2) + "*".repeat(username.length - 2)
       : "**";
+  }
+
+  // Mask full name (show first char per word + "****")
+  if (maskedRecord.userId?.fullName) {
+    const fullName = String(maskedRecord.userId.fullName).trim();
+    if (fullName) {
+      maskedRecord.userId.fullName = fullName
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(maskNamePart)
+        .join(" ");
+    }
   }
   
   // Mask email (show first part + asterisks + domain)
@@ -429,7 +448,7 @@ router.get("/all", authMiddleware, roleMiddleware("admin"), async (req, res) => 
   try {
     // Get references from MongoDB
     const attendanceRefs = await Attendance.find()
-      .populate("userId", "username email walletAddress employeeId")
+      .populate("userId", "username fullName email walletAddress employeeId")
       .sort({ date: -1, createdAt: -1 });
 
     // Get actual records from off-chain storage and combine with references
@@ -474,7 +493,7 @@ router.get("/employee/:userId", authMiddleware, roleMiddleware("admin"), async (
 
     // Get references from MongoDB
     const attendanceRefs = await Attendance.find({ userId })
-      .populate("userId", "username email walletAddress employeeId")
+      .populate("userId", "username fullName email walletAddress employeeId")
       .sort({ date: -1 });
 
     // Get actual records from off-chain storage

@@ -15,6 +15,28 @@ type AnomalyRow = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
+// Helper function to format date as M/D/YYYY
+const formatDate = (dateString: string): string => {
+  if (!dateString) return "—";
+  try {
+    const date = new Date(dateString);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  } catch {
+    return dateString;
+  }
+};
+
+// Helper function to capitalize first letter of each word
+const capitalizeNames = (name: string): string => {
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 export default function AnomalyPage() {
   const [results, setResults] = useState<AnomalyRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +121,7 @@ export default function AnomalyPage() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <div className="text-sm font-semibold text-[#8b5a2b] mb-2">Brewing Trust Admin</div>
+        <div className="text-sm font-semibold text-[#F89040] mb-2">Brewing Trust</div>
         <h1 className="text-3xl font-extrabold text-zinc-900">AI Anomaly Detection</h1>
         <div className="text-sm text-zinc-600 mt-2">
           Runs Isolation Forest on clock-in/out patterns and flags unusual shifts.
@@ -109,7 +131,7 @@ export default function AnomalyPage() {
       <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#8b5a2b] rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#F89040] rounded-full flex items-center justify-center">
               <Image
                 src="/icons/anomaly.png"
                 alt="Anomaly icon"
@@ -133,7 +155,7 @@ export default function AnomalyPage() {
               Refresh
             </button>
             <button
-              className="px-4 py-2 rounded-lg bg-[#8b5a2b] hover:bg-[#744a23] text-white font-semibold"
+              className="px-4 py-2 rounded-lg bg-[#F89040] hover:bg-[#E07F33] text-white font-semibold"
               onClick={runScanNow}
               disabled={running}
             >

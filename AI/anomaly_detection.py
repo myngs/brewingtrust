@@ -180,14 +180,29 @@ def extract_features(attendance_logs: list[dict[str, Any]]) -> pd.DataFrame:
             continue
 
         shift_length = (clock_out - clock_in).total_seconds() / 3600.0
+        
+        # Additional features for better anomaly detection
+        clock_in_hour = int(clock_in.hour)
+        clock_out_hour = int(clock_out.hour)
+        day_of_week = clock_in.weekday()  # 0=Monday, 6=Sunday
+        
+        # Detect if shift crosses midnight
+        crosses_midnight = 1 if clock_out_hour < clock_in_hour else 0
+        
+        # Calculate deviation from standard 8-hour shift
+        shift_deviation = abs(shift_length - 8.0)
+        
         rows.append(
             {
                 "employee_id": str(employee_id),
                 "clock_in_time": clock_in.isoformat(),
                 "clock_out_time": clock_out.isoformat(),
-                "clock_in_hour": int(clock_in.hour),
-                "clock_out_hour": int(clock_out.hour),
+                "clock_in_hour": clock_in_hour,
+                "clock_out_hour": clock_out_hour,
                 "shift_length": float(shift_length),
+                "day_of_week": day_of_week,
+                "crosses_midnight": crosses_midnight,
+                "shift_deviation": shift_deviation,
             }
         )
 
@@ -202,14 +217,23 @@ def run_anomaly_detection(
     if df.empty:
         raise ValueError("No usable attendance rows found (missing clock-in/clock-out?).")
 
-    X = df[["clock_in_hour", "clock_out_hour", "shift_length"]]
+    # Use enhanced feature set for better anomaly detection
+    # Includes: clock-in hour, clock-out hour, shift length, day of week, midnight crossing, and shift deviation
+    X = df[["clock_in_hour", "clock_out_hour", "shift_length", "day_of_week", "crosses_midnight", "shift_deviation"]]
+    
     model = IsolationForest(
         contamination=contamination,
         random_state=random_state,
         n_estimators=200,
+        max_samples="auto",
+        max_features=1.0,
     )
     model.fit(X)
     df["anomaly_flag"] = model.predict(X)
+    
+    # Add anomaly score for additional context
+    df["anomaly_score"] = model.score_samples(X)
+    
     return df
 
 

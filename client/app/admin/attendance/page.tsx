@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 
-const PAY_RATE_PER_DAY = 1200;
+const PAY_RATE_PER_HOUR = 50; // PHP 50 per hour
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 type VerifiedRow = {
   employeeId: string;
@@ -14,9 +15,34 @@ type VerifiedRow = {
 
 type PayrollRow = {
   employee: string;
-  daysWorked: number;
-  ratePerDay: number;
+  hoursWorked: number;
+  ratePerHour: number;
   payroll: number;
+};
+
+type FlaggedRow = {
+  employeeId: string;
+  date: string;
+  reason: string;
+};
+
+type AttendanceRecord = {
+  date?: string;
+  status?: string;
+  totalHours?: number | null;
+  clockIn?: number | null;
+  clockOut?: number | null;
+  recordHash?: string | null;
+  blockchainTxHash?: string | null;
+  userId?: {
+    username?: string | null;
+    fullName?: string | null;
+    employeeId?: string | null;
+  } | null;
+};
+
+type ApiUser = {
+  role?: string;
 };
 
 export default function AttendancePage() {
@@ -26,7 +52,14 @@ export default function AttendancePage() {
   });
   const [verified, setVerified] = useState<VerifiedRow[]>([]);
   const [payrollRows, setPayrollRows] = useState<PayrollRow[]>([]);
+  const [flaggedRows, setFlaggedRows] = useState<FlaggedRow[]>([]);
+  const [blockchainActivity, setBlockchainActivity] = useState<{ txHashes: string[]; recordHashes: string[] }>({
+    txHashes: [],
+    recordHashes: []
+  });
   const [loading, setLoading] = useState(true);
+
+  const totalPayroll = useMemo(() => payrollRows.reduce((sum, row) => sum + (row.payroll || 0), 0), [payrollRows]);
 
   useEffect(() => {
     fetchVerifiedRecords();
@@ -35,70 +68,84 @@ export default function AttendancePage() {
   const fetchVerifiedRecords = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/attendance/all", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (!token) return;
 
-      if (response.ok) {
-        const data = await response.json();
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [attendanceResponse, usersResponse] = await Promise.all([
+        fetch(`${API_BASE}/api/attendance/all`, { headers }),
+        fetch(`${API_BASE}/api/auth/users`, { headers })
+      ]);
+
+      if (attendanceResponse.ok) {
+        const data = (await attendanceResponse.json()) as { records?: AttendanceRecord[] };
         const records = data.records || [];
+        const usersData = (usersResponse.ok ? await usersResponse.json() : { users: [] }) as { users?: ApiUser[] };
+        const users = usersData.users || [];
 
         const today = new Date().toISOString().split("T")[0];
-        const uniqueEmployees = new Set(
-          records.map((record: any) => record.userId?.username).filter(Boolean)
+        const totalStaff = users.filter((u) => u.role !== "admin").length;
+        const activeTodayEmployees = new Set(
+          records
+            .filter((record) => record.date === today && (typeof record.clockIn === "number" || record.status === "clocked-in" || record.status === "completed"))
+            .map((record) => record.userId?.employeeId || record.userId?.username)
+            .filter(Boolean)
         );
-        const activeTodayCount = records.filter((record: any) => {
-          return (
-            record.date === today &&
-            (record.status === "clocked-in" || record.status === "completed")
-          );
-        }).length;
+        const activeTodayCount = activeTodayEmployees.size;
 
         setStats({
-          totalStaff: uniqueEmployees.size,
+          totalStaff,
           activeToday: activeTodayCount,
         });
 
         const verifiedRecords = records
-          .filter((record: any) => record.status === "completed")
+          .filter((record) => record.status === "completed")
           .slice(0, 10)
-          .map((record: any) => ({
-            employeeId: record.userId?.username || "Unknown",
-            date: record.date,
+          .map((record) => ({
+            employeeId: record.userId?.fullName || record.userId?.employeeId || record.userId?.username || "Unknown",
+            date: record.date || "—",
             clockIn: record.clockIn || 0,
             totalhours: record.totalHours ? `${record.totalHours.toFixed(2)}h` : "0.00h",
           }));
         setVerified(verifiedRecords);
 
-        const payrollByEmployee = records.reduce((acc: Record<string, Set<string>>, record: any) => {
-          const employee = record.userId?.username || "Unknown";
-
-          if (!acc[employee]) {
-            acc[employee] = new Set<string>();
-          }
-
-          if (record.status === "completed" && record.date) {
-            acc[employee].add(record.date);
-          }
-
+        const payrollByEmployee = records.reduce((acc: Record<string, number>, record) => {
+          const employee = record.userId?.fullName || record.userId?.employeeId || record.userId?.username || "Unknown";
+          const hours = record.status === "completed" ? Math.max(0, Number(record.totalHours || 0)) : 0;
+          acc[employee] = (acc[employee] || 0) + hours;
           return acc;
         }, {});
 
         const payrollData = Object.entries(payrollByEmployee)
-          .map(([employee, workedDates]) => {
-            const daysWorked = workedDates.size;
-            return {
-              employee,
-              daysWorked,
-              ratePerDay: PAY_RATE_PER_DAY,
-              payroll: daysWorked * PAY_RATE_PER_DAY,
-            };
-          })
+          .map(([employee, hoursWorked]) => ({
+            employee,
+            hoursWorked,
+            ratePerHour: PAY_RATE_PER_HOUR,
+            payroll: hoursWorked * PAY_RATE_PER_HOUR,
+          }))
           .sort((a, b) => b.payroll - a.payroll);
 
         setPayrollRows(payrollData);
+
+        const flagged = records
+          .filter((record) => !record.clockOut || (record.totalHours ?? 0) > 12 || (record.totalHours ?? 0) < 0)
+          .slice(0, 5)
+          .map((record) => ({
+            employeeId: record.userId?.fullName || record.userId?.employeeId || record.userId?.username || "Unknown",
+            date: record.date || "—",
+            reason: !record.clockOut ? "Missing clock out" : (record.totalHours ?? 0) > 12 ? "Overtime" : "Invalid hours"
+          }));
+        setFlaggedRows(flagged);
+
+        const txHashes = records
+          .filter((record) => record.status === "completed" && record.blockchainTxHash)
+          .slice(0, 5)
+          .map((record) => record.blockchainTxHash as string);
+        const recordHashes = records
+          .filter((record) => record.recordHash)
+          .slice(0, 5)
+          .map((record) => record.recordHash as string);
+        setBlockchainActivity({ txHashes, recordHashes });
       }
     } catch (err) {
       console.error("Error fetching verified records:", err);
@@ -111,7 +158,7 @@ export default function AttendancePage() {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <div className="text-sm font-semibold text-[#8b5a2b] mb-2">Brewing Trust Admin</div>
+        <div className="text-sm font-semibold text-[#F89040] mb-2">Brewing Trust</div>
         <h1 className="text-3xl font-extrabold text-zinc-900">Attendance & Payroll</h1>
       </div>
 
@@ -119,7 +166,7 @@ export default function AttendancePage() {
       <div className="grid gap-6 md:grid-cols-2 mb-10">
         <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[#8b5a2b] rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#F89040] rounded-full flex items-center justify-center">
               <Image src="/icons/employee.png" alt="Employee icon" width={20} height={20} className="filter brightness-0 invert" />
             </div>
             <div>
@@ -149,7 +196,7 @@ export default function AttendancePage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee ID</th>
+              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee</th>
               <th className="text-left py-3 px-4 font-semibold text-zinc-900">Date</th>
               <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock Input</th>
               <th className="text-left py-3 px-4 font-semibold text-zinc-900">Total Hours</th>
@@ -182,14 +229,14 @@ export default function AttendancePage() {
 
       {/* Payroll Table */}
       <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)] mb-8">
-        <h3 className="text-xl font-bold text-zinc-900 mb-6">Employee Payroll (Based on Days Worked)</h3>
+        <h3 className="text-xl font-bold text-zinc-900 mb-6">Employee Payroll (Based on Hours Worked)</h3>
 
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Days Worked</th>
-              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Rate / Day</th>
+              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Hours Worked</th>
+              <th className="text-left py-3 px-4 font-semibold text-zinc-900">Rate / Hour</th>
               <th className="text-left py-3 px-4 font-semibold text-zinc-900">Payroll</th>
             </tr>
           </thead>
@@ -198,8 +245,8 @@ export default function AttendancePage() {
               payrollRows.map((row, i) => (
                 <tr key={`${row.employee}-${i}`} className="border-b border-gray-100">
                   <td className="py-4 px-4 text-zinc-700">{row.employee}</td>
-                  <td className="py-4 px-4 text-zinc-700">{row.daysWorked}</td>
-                  <td className="py-4 px-4 text-zinc-700">PHP {row.ratePerDay.toLocaleString()}</td>
+                  <td className="py-4 px-4 text-zinc-700">{row.hoursWorked.toFixed(2)}</td>
+                  <td className="py-4 px-4 text-zinc-700">PHP {row.ratePerHour.toLocaleString()}</td>
                   <td className="py-4 px-4 text-zinc-900 font-semibold">PHP {row.payroll.toLocaleString()}</td>
                 </tr>
               ))
@@ -223,25 +270,29 @@ export default function AttendancePage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee ID</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Employee</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Date</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Flagged Reason</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Action</th>
               </tr>
             </thead>
-            <tbody>
-              <tr className="border-b border-gray-100">
-                <td className="py-4 px-4 text-zinc-700">EMP-102</td>
-                <td className="py-4 px-4 text-zinc-700">2-3-26</td>
-                <td className="py-4 px-4 text-zinc-700">Late Clock-In</td>
-                <td className="py-4 px-4 text-zinc-500 text-xl">&gt;</td>
-              </tr>
-              <tr>
-                <td className="py-4 px-4 text-zinc-700">EMP-117</td>
-                <td className="py-4 px-4 text-zinc-700">2-3-26</td>
-                <td className="py-4 px-4 text-zinc-700">Missing Logout</td>
-                <td className="py-4 px-4 text-zinc-500 text-xl">&gt;</td>
-              </tr>
+          <tbody>
+              {flaggedRows.length > 0 ? (
+                flaggedRows.map((row, i) => (
+                  <tr key={`${row.employeeId}-${row.date}-${i}`} className="border-b border-gray-100">
+                    <td className="py-4 px-4 text-zinc-700">{row.employeeId}</td>
+                    <td className="py-4 px-4 text-zinc-700">{row.date}</td>
+                    <td className="py-4 px-4 text-zinc-700">{row.reason}</td>
+                    <td className="py-4 px-4 text-zinc-500 text-xl">&gt;</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-8 px-4 text-center text-zinc-500">
+                    {loading ? "Loading flagged records..." : "No flagged records found"}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -249,25 +300,41 @@ export default function AttendancePage() {
         {/* Blockchain Activity Feed */}
         <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 bg-[#8b5a2b] rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#F89040] rounded-full flex items-center justify-center">
               <Image src="/icons/ledger.png" alt="Blockchain icon" width={16} height={16} className="filter brightness-0 invert" />
             </div>
             <h3 className="text-xl font-bold text-zinc-900">Blockchain Activity Feed</h3>
           </div>
 
           <div className="flex items-end justify-between mb-6">
-            <h2 className="text-3xl font-extrabold text-zinc-900">PHP 40,000.00</h2>
-            <button className="bg-[#8b5a2b] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#7a4a1b] transition">
+            <h2 className="text-3xl font-extrabold text-zinc-900">PHP {totalPayroll.toLocaleString()}</h2>
+            <button className="bg-[#F89040] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#E07F33] transition">
               Execute Smart Contract
             </button>
           </div>
 
           <div>
             <p className="font-semibold text-zinc-900 mb-2">Transaction Hashes</p>
-            <p className="text-zinc-500 mb-4">0x7d8a9b12e456...</p>
+            {blockchainActivity.txHashes.length > 0 ? (
+              <ul className="text-zinc-500 mb-4 space-y-1">
+                {blockchainActivity.txHashes.map((hash, i) => (
+                  <li key={`${hash}-${i}`}>{`${hash.slice(0, 10)}...${hash.slice(-6)}`}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-zinc-500 mb-4">{loading ? "Loading..." : "—"}</p>
+            )}
 
             <p className="font-semibold text-zinc-900 mb-2">Blockchain Hashes</p>
-            <p className="text-zinc-500">0xa4c78d8b9023...</p>
+            {blockchainActivity.recordHashes.length > 0 ? (
+              <ul className="text-zinc-500 space-y-1">
+                {blockchainActivity.recordHashes.map((hash, i) => (
+                  <li key={`${hash}-${i}`}>{`${hash.slice(0, 10)}...${hash.slice(-6)}`}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-zinc-500">{loading ? "Loading..." : "—"}</p>
+            )}
           </div>
         </div>
       </div>

@@ -133,5 +133,65 @@
       "updatedAt": "2026-03-16T07:11:35.348Z"
     },
     "hash": "873dc2d466241eefc3e7adddb183e1af7da3c4bd49b8a2b90318d6a96dbbeaca"
+  },
+  {
+    "id": "EMP-MMSU1Z0F-A18_20260317",
+    "employeeId": "EMP-MMSU1Z0F-A18",
+    "date": "20260317",
+    "clockIn": 1773724966,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69b7aa428cbd8fa17dd285c2",
+      "username": "jrpmc",
+      "createdAt": "2026-03-17T05:22:46.824Z",
+      "updatedAt": "2026-03-17T05:22:46.824Z"
+    },
+    "hash": "eccb3a47a08b165678a8cc1398c933c849cb9413b785256b7dd7a334f4da651d"
+  },
+  {
+    "id": "EMP-MMSUDGET-SHI_20260317",
+    "employeeId": "EMP-MMSUDGET-SHI",
+    "date": "20260317",
+    "clockIn": 1773725085,
+    "clockOut": 1773730021,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69b7ac5a8cbd8fa17dd285e9",
+      "username": "kyllene",
+      "createdAt": "2026-03-17T05:24:39.333Z",
+      "updatedAt": "2026-03-17T06:47:01.839Z"
+    },
+    "hash": "cd62c9659803c97d2173f912e5e41bfa1906c97eda5f769fedbb4f280b269ede"
+  },
+  {
+    "id": "69957b441d35edbb22b9b4be_20260317",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260317",
+    "clockIn": 1773730062,
+    "clockOut": 1773730070,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-17T06:47:42.290Z",
+      "updatedAt": "2026-03-17T06:47:50.333Z"
+    },
+    "hash": "a01f9573e7bb587afe4c9297b4d6bc4fbf1b3238d6a7694ec0cb9e23b87205e2"
+  },
+  {
+    "id": "69957b441d35edbb22b9b4be_20260318",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260318",
+    "clockIn": 1773806407,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-18T04:00:07.775Z",
+      "updatedAt": "2026-03-18T04:00:07.775Z"
+    },
+    "hash": "b8971bb72830e6044b675d9aadb4c1261c9cb062219258ae34d4b3efde424217"
   }
 ]

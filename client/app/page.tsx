@@ -208,7 +208,7 @@ export default function Login() {
 
         <section className="relative hidden w-1/2 md:block">
           <Image
-            src="/icons/loginkopi.svg"
+            src="/loginkopi.png"
             alt="Coffee being poured into a glass over ice on a wooden counter."
             fill
             className="object-cover"
@@ -219,4 +219,3 @@ export default function Login() {
     </div>
   );
 }
-

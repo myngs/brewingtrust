@@ -9,6 +9,7 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
+    fullName: "",
     username: "",
     email: "",
     password: "",
@@ -70,11 +71,11 @@ export default function Signup() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center bg-zinc-100 px-4 md:px-6"
+      className="flex min-h-screen items-start justify-center overflow-y-auto bg-zinc-100 px-4 py-8 md:items-center md:px-6 md:py-0"
       style={{ fontFamily: "\"Museo Sans\", \"Museo Sans 700\", sans-serif", fontWeight: 700 }}
     >
       <main className="flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-zinc-100/70 bg-white/95 backdrop-blur-sm shadow-[0_4px_20px_rgba(0,0,0,0.08)] md:flex-row md:items-stretch lg:max-w-5xl lg:h-[560px]">
-        <section className="flex w-full flex-col justify-between px-6 py-6 sm:px-8 sm:py-8 md:w-[58%] md:px-9 md:py-8 lg:px-11 lg:py-10">
+        <section className="flex w-full flex-col justify-between px-6 py-6 sm:px-8 sm:py-8 md:w-[58%] md:px-9 md:py-8 lg:px-11 lg:py-10 lg:overflow-y-auto lg:min-h-0">
           <div>
             <p className="text-xs font-semibold tracking-wide text-[#562F00]">
               Brewing Trust
@@ -101,6 +102,25 @@ export default function Signup() {
                     type="text"
                     placeholder="Username"
                     value={formData.username}
+                    onChange={handleChange}
+                    required
+                    className="mt-1.5 h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 text-sm font-normal text-zinc-900 outline-none ring-0 transition placeholder:font-normal placeholder:text-zinc-400 hover:border-[#562F00] hover:shadow-[0_0_0_3px_rgba(86,47,0,0.16)] focus:border-[#562F00] focus:bg-white focus:ring-2 focus:ring-[#562F00]/30"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="fullName"
+                    className="block text-xs font-medium text-zinc-700"
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    placeholder="Full name"
+                    value={formData.fullName}
                     onChange={handleChange}
                     required
                     className="mt-1.5 h-11 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 text-sm font-normal text-zinc-900 outline-none ring-0 transition placeholder:font-normal placeholder:text-zinc-400 hover:border-[#562F00] hover:shadow-[0_0_0_3px_rgba(86,47,0,0.16)] focus:border-[#562F00] focus:bg-white focus:ring-2 focus:ring-[#562F00]/30"

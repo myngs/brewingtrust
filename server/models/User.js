@@ -29,8 +29,13 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["admin", "employee"],
+    enum: ["admin", "employee", "supervisor"],
     default: "employee"
+  },
+  supervisor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
   },
   walletAddress: {
     type: String,

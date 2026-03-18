@@ -1,34 +1,84 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { jwtDecode } from "jwt-decode";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+
+type MeResponse = {
+  user?: {
+    username?: string;
+    fullName?: string;
+    email?: string;
+    role?: "admin" | "employee";
+  };
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [showProfile, setShowProfile] = useState(false);
+  const [me, setMe] = useState<MeResponse["user"] | null>(null);
 
   const isActive = (path: string) => pathname === path;
 
-  return (
-    <div className="min-h-screen bg-[#f4f2ee] px-6 py-6 text-zinc-900">
-      <div className="mx-auto max-w-7xl mb-4">
-        <div className="rounded-xl bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-          <p className="text-sm font-semibold text-[#8b5a2b]">Bruno Mars admin</p>
-        </div>
-      </div>
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
-      <div className="mx-auto max-w-7xl flex gap-6">
-        {/* Sidebar */}
-        <aside className="w-72 bg-white rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-6 flex flex-col justify-between">
+        // Fast-path: decode username from JWT so we don't show a generic fallback while loading.
+        try {
+          const decoded = jwtDecode<{ username?: string; email?: string; role?: "admin" | "employee" }>(token);
+          setMe((prev) => ({
+            username: prev?.username ?? decoded.username,
+            email: prev?.email ?? decoded.email,
+            role: prev?.role ?? decoded.role,
+            fullName: prev?.fullName
+          }));
+        } catch {
+          // ignore invalid/unknown token payload
+        }
+
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) return;
+        const data = (await res.json()) as MeResponse;
+        setMe(data.user ?? null);
+      } catch {
+        setMe(null);
+      }
+    };
+
+    fetchMe();
+  }, []);
+
+  const displayName = useMemo(() => {
+    return me?.fullName?.trim() || me?.username?.trim() || "Admin";
+  }, [me]);
+
+  const displayUsername = useMemo(() => me?.username?.trim() || "", [me]);
+  const displayEmail = useMemo(() => me?.email?.trim() || "", [me]);
+  const roleLabel = useMemo(() => (me?.role === "admin" ? "Administrator" : me?.role || "Admin"), [me]);
+  const initial = useMemo(() => (displayName[0] || "A").toUpperCase(), [displayName]);
+
+  return (
+    <div className="h-screen bg-[#f4f2ee] text-zinc-900">
+      <div className="flex h-full">
+        {/* Sidebar (fixed size across all /admin routes) */}
+        <aside className="w-72 min-w-72 shrink-0 h-full bg-white shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-6 flex flex-col overflow-y-auto">
           {/* Logo Row */}
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 bg-[#8b5a2b] rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-[#F89040] rounded-full flex items-center justify-center">
               <Image src="/logo.png" alt="Brewing Trust Logo" width={32} height={32} />
             </div>
             <div className="text-lg font-bold">
-              <div className="text-[#8b5a2b]">BREWING</div>
+              <div className="text-[#F89040]">BREWING</div>
               <div className="text-zinc-900">TRUST</div>
             </div>
           </div>
@@ -43,17 +93,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
 
           {/* Profile Card */}
-          <div className="mt-auto">
+          <div className="mt-auto pt-6">
             <div
               className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-gray-50"
               onClick={() => setShowProfile(true)}
             >
-              <div className="w-10 h-10 bg-[#8b5a2b] rounded-full flex items-center justify-center text-white font-bold text-lg">
-                B
+              <div className="w-10 h-10 bg-[#F89040] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                {initial}
               </div>
               <div>
-                <div className="font-semibold text-zinc-900">Bruno Mars admin</div>
-                <div className="text-sm text-zinc-500">Administrator</div>
+                <div className="font-semibold text-zinc-900">{displayName}</div>
+                <div className="text-sm text-zinc-500">
+                  {roleLabel}
+                  {displayUsername ? ` • @${displayUsername}` : ""}
+                </div>
               </div>
             </div>
 
@@ -102,7 +155,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 min-w-0">{children}</main>
+        <main className="flex-1 min-w-0 h-full overflow-y-auto px-6 py-6">
+          <div className="mx-auto max-w-7xl w-full">
+            <div className="mb-4">
+              <div className="rounded-xl bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
+                <p className="text-sm font-semibold text-[#F89040]">
+                  {displayName}
+                  {displayUsername && displayUsername !== displayName ? ` (@${displayUsername})` : ""}
+                </p>
+              </div>
+            </div>
+
+            {children}
+          </div>
+        </main>
       </div>
 
       {/* Profile Modal */}
@@ -126,15 +192,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             <div className="flex flex-col items-center gap-6">
-              <div className="w-20 h-20 bg-[#8b5a2b] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                B
+              <div className="w-20 h-20 bg-[#F89040] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                {initial}
               </div>
               <div className="text-center text-zinc-900">
-                <p><strong>Name:</strong> Bruno Mars admin</p>
-                <p><strong>Email:</strong> admin@brewingtrust.com</p>
-                <p><strong>Role:</strong> Administrator</p>
+                <p><strong>Name:</strong> {displayName}</p>
+                <p><strong>Username:</strong> {displayUsername ? `@${displayUsername}` : "—"}</p>
+                <p><strong>Email:</strong> {displayEmail || "—"}</p>
+                <p><strong>Role:</strong> {roleLabel}</p>
               </div>
-              <button className="bg-[#8b5a2b] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#7a4a1b] transition">
+              <button className="bg-[#F89040] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#E07F33] transition">
                 Edit Profile
               </button>
             </div>
@@ -152,7 +219,7 @@ function SidebarLink({ href, icon, text, isActive }: { href: string; icon: strin
       href={href}
       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
         isActive
-          ? "bg-[#8b5a2b] text-white"
+          ? "bg-[#F89040] text-white"
           : "text-zinc-700 hover:bg-gray-100"
       }`}
     >

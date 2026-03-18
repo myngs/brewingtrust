@@ -3,10 +3,6 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
-const employees: any[] = [
-  // Data will be fetched from API
-];
-
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,15 +23,17 @@ export default function EmployeesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Format users for display
-        const formattedEmployees = data.users.map((user: any) => ({
-          id: user.employeeId || user._id.slice(-9), // Show employeeId or last 9 chars of ID
-          name: user.fullName || user.username,
-          email: user.email,
-          role: user.role,
-          supervisor: "N/A",
-          status: user.walletAddress ? "Active" : "Inactive"
-        }));
+        // Filter out users with role "admin" and format for display
+        const formattedEmployees = data.users
+          .filter((user: any) => user.role !== "admin")
+          .map((user: any) => ({
+            id: user.employeeId || user._id.slice(-9),
+            name: user.fullName || user.username,
+            email: user.email,
+            role: user.role,
+            supervisor: "N/A",
+            status: user.walletAddress ? "Active" : "Inactive"
+          }));
         setEmployees(formattedEmployees);
       }
     } catch (err) {
@@ -44,6 +42,7 @@ export default function EmployeesPage() {
       setLoading(false);
     }
   };
+
   const statusOptions = ["All", "Active", "Inactive", "Suspended"];
   const roleOptions = ["Manager", "Staff", "Admin"];
   const supervisorOptions = ["Lisa M.", "Carl G.", "John P."];
@@ -213,3 +212,4 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
