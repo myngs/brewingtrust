@@ -223,5 +223,35 @@
       "updatedAt": "2026-03-18T10:20:18.810Z"
     },
     "hash": "b4946fc01b5c65af22ae19d04fb0b976ebd97e8d1fbb63c5dad51169c25dfe26"
+  },
+  {
+    "id": "69957b441d35edbb22b9b4be_20260319",
+    "employeeId": "69957b441d35edbb22b9b4be",
+    "date": "20260319",
+    "clockIn": 1773878442,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69957b441d35edbb22b9b4be",
+      "username": "Joshi",
+      "createdAt": "2026-03-19T00:00:42.411Z",
+      "updatedAt": "2026-03-19T00:00:42.411Z"
+    },
+    "hash": "b3c99413f1242db1a695049ded2b4654646bf4db1ce577cf5b3b95d706aac540"
+  },
+  {
+    "id": "EMP-MMSU1Z0F-A18_20260319",
+    "employeeId": "EMP-MMSU1Z0F-A18",
+    "date": "20260319",
+    "clockIn": 1773880496,
+    "clockOut": null,
+    "metadata": {
+      "action": "clock-in",
+      "userId": "69b7aa428cbd8fa17dd285c2",
+      "username": "jrpmc",
+      "createdAt": "2026-03-19T00:34:56.074Z",
+      "updatedAt": "2026-03-19T00:34:56.074Z"
+    },
+    "hash": "89d7c8b256d5ceca70b312c2289c9e8dd93abf8ff1e2b63b212d26ddbc710e1c"
   }
 ]

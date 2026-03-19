@@ -595,4 +595,33 @@ router.get("/blockchain-status", authMiddleware, roleMiddleware("admin"), async 
   }
 });
 
+// =====================
+// MANUAL MIDNIGHT RESET (ADMIN ONLY)
+// =====================
+/**
+ * Reset incomplete ('clocked-in') records for today to 'pending' status
+ * Run manually daily around midnight
+ */
+router.post("/reset-midnight", authMiddleware, roleMiddleware("admin"), async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const result = await Attendance.updateMany(
+      { date: today, status: "clocked-in" },
+      { status: "pending", updatedAt: new Date() }
+    );
+
+    console.log(`🕐 Midnight reset: Updated ${result.modifiedCount} clocked-in records to pending for ${today}`);
+
+    res.json({
+      message: "Midnight reset completed",
+      date: today,
+      updatedCount: result.modifiedCount,
+      matchedCount: result.matchedCount
+    });
+  } catch (err) {
+    console.error("Reset error:", err);
+    res.status(500).json({ message: "Reset failed", error: err.message });
+  }
+});
+
 module.exports = router;

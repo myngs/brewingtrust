@@ -372,6 +372,39 @@ router.get(
   }
 );
 
+// =====================
+// DELETE USER (ADMIN - DEACTIVATE)
+// =====================
+router.delete(
+  "/users/:id",
+  authMiddleware,
+  roleMiddleware("admin"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Find and delete user
+      const user = await User.findByIdAndDelete(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Cascade delete attendance records
+      const deletedAttendanceCount = await Attendance.deleteMany({ userId: id }).then(result => result.deletedCount);
+      
+      console.log(`🗑️ Admin deleted user ${user.username} (${user.employeeId || id}) and ${deletedAttendanceCount} attendance records`);
+      
+      res.json({ 
+        message: "User deactivated and data deleted successfully",
+        deletedUser: user.employeeId || user.username,
+        deletedAttendance: true 
+      });
+    } catch (err) {
+      console.error("Delete user error:", err);
+      res.status(500).json({ message: "Server error", error: err.message });
+    }
+  }
+);
 
 // =====================
 // EMPLOYEE ROUTE

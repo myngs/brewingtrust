@@ -27,6 +27,7 @@ export default function EmployeesPage() {
         const formattedEmployees = data.users
           .filter((user: any) => user.role !== "admin")
           .map((user: any) => ({
+            _id: user._id,
             id: user.employeeId || user._id.slice(-9),
             name: user.fullName || user.username,
             email: user.email,
@@ -43,15 +44,31 @@ export default function EmployeesPage() {
     }
   };
 
-  const statusOptions = ["All", "Active", "Inactive", "Suspended"];
-  const roleOptions = ["Manager", "Staff", "Admin"];
-  const supervisorOptions = ["Lisa M.", "Carl G.", "John P."];
+const supervisorOptions = ["Lisa M.", "Carl G.", "John P."];
 
-  const handleAction = (empId: string, action: string) => {
-    if (action === "Edit Role") {
-      alert(`Navigate to Edit Role page for ${empId}`);
-    } else if (action === "Deactivate") {
-      alert(`Employee ${empId} will be deactivated`);
+  const handleDeactivate = async (realId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this employee and their attendance records?")) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/auth/users/${realId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (response.ok) {
+        alert("Employee deactivated successfully!");
+        fetchEmployees(); // Refresh list
+      } else {
+        const error = await response.json();
+        alert("Error: " + error.message);
+      }
+    } catch (err) {
+      alert("Failed to deactivate employee");
+      console.error(err);
     }
   };
 
@@ -133,20 +150,6 @@ export default function EmployeesPage() {
           />
 
           <select className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b5a2b] focus:border-transparent">
-            <option>Status</option>
-            {statusOptions.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-          </select>
-
-          <select className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b5a2b] focus:border-transparent">
-            <option>Role</option>
-            {roleOptions.map((role) => (
-              <option key={role}>{role}</option>
-            ))}
-          </select>
-
-          <select className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b5a2b] focus:border-transparent">
             <option>Supervisor</option>
             {supervisorOptions.map((sup) => (
               <option key={sup}>{sup}</option>
@@ -191,14 +194,12 @@ export default function EmployeesPage() {
                   </span>
                 </td>
                 <td className="py-4 px-6">
-                  <select
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8b5a2b] focus:border-transparent"
-                    onChange={(e) => handleAction(emp.id, e.target.value)}
+                  <button
+                    onClick={() => handleDeactivate(emp._id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap"
                   >
-                    <option>View</option>
-                    <option>Edit Role</option>
-                    <option>Deactivate</option>
-                  </select>
+                    Deactivate
+                  </button>
                 </td>
               </tr>
             )) : (

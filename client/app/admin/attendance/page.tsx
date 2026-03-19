@@ -46,10 +46,7 @@ type ApiUser = {
 };
 
 export default function AttendancePage() {
-  const [stats, setStats] = useState({
-    totalStaff: 0,
-    activeToday: 0,
-  });
+
   const [verified, setVerified] = useState<VerifiedRow[]>([]);
   const [payrollRows, setPayrollRows] = useState<PayrollRow[]>([]);
   const [flaggedRows, setFlaggedRows] = useState<FlaggedRow[]>([]);
@@ -72,31 +69,11 @@ export default function AttendancePage() {
 
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [attendanceResponse, usersResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/attendance/all`, { headers }),
-        fetch(`${API_BASE}/api/auth/users`, { headers })
-      ]);
+      const attendanceResponse = await fetch(`${API_BASE}/api/attendance/all`, { headers });
 
       if (attendanceResponse.ok) {
         const data = (await attendanceResponse.json()) as { records?: AttendanceRecord[] };
         const records = data.records || [];
-        const usersData = (usersResponse.ok ? await usersResponse.json() : { users: [] }) as { users?: ApiUser[] };
-        const users = usersData.users || [];
-
-        const today = new Date().toISOString().split("T")[0];
-        const totalStaff = users.filter((u) => u.role !== "admin").length;
-        const activeTodayEmployees = new Set(
-          records
-            .filter((record) => record.date === today && (typeof record.clockIn === "number" || record.status === "clocked-in" || record.status === "completed"))
-            .map((record) => record.userId?.employeeId || record.userId?.username)
-            .filter(Boolean)
-        );
-        const activeTodayCount = activeTodayEmployees.size;
-
-        setStats({
-          totalStaff,
-          activeToday: activeTodayCount,
-        });
 
         const verifiedRecords = records
           .filter((record) => record.status === "completed")
@@ -162,32 +139,7 @@ export default function AttendancePage() {
         <h1 className="text-3xl font-extrabold text-zinc-900">Attendance & Payroll</h1>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-2 mb-10">
-        <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-[#F89040] rounded-full flex items-center justify-center">
-              <Image src="/icons/employee.png" alt="Employee icon" width={20} height={20} className="filter brightness-0 invert" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-500">Total Staff</p>
-              <h2 className="text-4xl font-extrabold text-zinc-900">{stats.totalStaff}</h2>
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-              <Image src="/icons/attendance.png" alt="Attendance icon" width={20} height={20} className="filter brightness-0 invert" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-500">Active Today</p>
-              <h2 className="text-4xl font-extrabold text-zinc-900">{stats.activeToday}</h2>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Verified Records */}
       <div className="rounded-2xl bg-white p-8 shadow-[0_10px_30px_rgba(0,0,0,0.10)] mb-8">

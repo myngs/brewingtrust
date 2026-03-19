@@ -82,7 +82,7 @@ export default function AnomalyPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const anomalies = useMemo(
+const anomalies = useMemo(
     () => results.filter((r) => r.anomaly_flag === -1),
     [results]
   );
