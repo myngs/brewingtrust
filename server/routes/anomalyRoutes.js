@@ -131,7 +131,7 @@ function runPythonAnomalyScan({ mainCodeDir, scriptPath, pythonBin, source }) {
 }
 
 // Admin-only: run scan now
-router.get("/run", authMiddleware, roleMiddleware("admin"), async (req, res) => {
+router.get("/run", authMiddleware, async (req, res) => {
   const mainCodeDir = path.resolve(__dirname, "..", "..");
   const scriptPath = path.join(mainCodeDir, "AI", "anomaly_detection.py");
   const csvPath = path.join(mainCodeDir, "AI", "anomaly_results.csv");

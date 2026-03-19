@@ -228,16 +228,16 @@
     "id": "69957b441d35edbb22b9b4be_20260319",
     "employeeId": "69957b441d35edbb22b9b4be",
     "date": "20260319",
-    "clockIn": 1773878442,
-    "clockOut": null,
+    "clockIn": 1773886304,
+    "clockOut": 1773886307,
     "metadata": {
       "action": "clock-in",
       "userId": "69957b441d35edbb22b9b4be",
       "username": "Joshi",
       "createdAt": "2026-03-19T00:00:42.411Z",
-      "updatedAt": "2026-03-19T00:00:42.411Z"
+      "updatedAt": "2026-03-19T02:11:47.209Z"
     },
-    "hash": "b3c99413f1242db1a695049ded2b4654646bf4db1ce577cf5b3b95d706aac540"
+    "hash": "d27a788395b26c6b6357d80a32760460fd3af4faf490f6c3a0fa60d56c7f8422"
   },
   {
     "id": "EMP-MMSU1Z0F-A18_20260319",

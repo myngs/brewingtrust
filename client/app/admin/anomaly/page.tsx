@@ -1,4 +1,4 @@
-﻿"use client";
+﻿ "use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -11,6 +11,7 @@ type AnomalyRow = {
   clock_out_hour: number;
   shift_length: number;
   anomaly_flag: number;
+  anomaly_score?: number;
 };
 
 // Derive a human-readable explanation of why a shift is anomalous
@@ -45,24 +46,13 @@ const describeAnomaly = (row: AnomalyRow): string => {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 // Helper function to format date as M-D-YYYY (e.g., "3-18-2026")
-const formatDate = (dateString: string): string => {
+const formatTime = (dateString: string): string => {
   if (!dateString) return "—";
-
-  // If backend ever sends YYYYMMDD (e.g., "20260318"), handle it explicitly
-  if (/^\d{8}$/.test(dateString)) {
-    const year = Number(dateString.slice(0, 4));
-    const month = Number(dateString.slice(4, 6));
-    const day = Number(dateString.slice(6, 8));
-    return `${month}-${day}-${year}`;
-  }
 
   try {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return dateString;
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return `${month}-${day}-${year}`;
+    return date.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   } catch {
     return dateString;
   }
@@ -82,10 +72,7 @@ export default function AnomalyPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-const anomalies = useMemo(
-    () => results.filter((r) => r.anomaly_flag === -1),
-    [results]
-  );
+const analyzedShifts = useMemo(() => results, [results]);
 
   useEffect(() => {
     fetchLatest();
@@ -176,8 +163,10 @@ const anomalies = useMemo(
               />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-zinc-900">Flagged Shifts</h3>
-              <div className="text-sm text-zinc-600">{anomalies.length} anomalies flagged</div>
+              <h3 className="text-xl font-bold text-zinc-900">All Analyzed Shifts</h3>
+              <div className="text-sm text-zinc-600">
+                {analyzedShifts.length} shifts analyzed
+              </div>
             </div>
           </div>
 
@@ -207,9 +196,9 @@ const anomalies = useMemo(
 
         {loading ? (
           <div className="py-12 text-center text-zinc-500">Loading...</div>
-        ) : anomalies.length === 0 ? (
+        ) : analyzedShifts.length === 0 ? (
           <div className="py-12 text-center text-zinc-500">
-            No anomalies flagged. Click "Run AI Scan" to analyze recent attendance logs.
+            No analysis results yet. Click "Run AI Scan" to start.
           </div>
         ) : (
           <table className="w-full">
@@ -219,17 +208,17 @@ const anomalies = useMemo(
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock In</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Clock Out</th>
                 <th className="text-left py-3 px-4 font-semibold text-zinc-900">Shift (hrs)</th>
-                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Why flagged?</th>
+                <th className="text-left py-3 px-4 font-semibold text-zinc-900">Reason</th>
               </tr>
             </thead>
             <tbody>
-              {anomalies.map((a, i) => (
+{analyzedShifts.map((row, i) => (
                 <tr key={i} className="border-b border-gray-100">
-                  <td className="py-4 px-4 text-zinc-700 font-medium">{a.employee_id}</td>
-                  <td className="py-4 px-4 text-zinc-700">{formatDate(a.clock_in_time)}</td>
-                  <td className="py-4 px-4 text-zinc-700">{formatDate(a.clock_out_time)}</td>
-                  <td className="py-4 px-4 text-zinc-700">{a.shift_length?.toFixed?.(2) ?? a.shift_length}</td>
-                  <td className="py-4 px-4 text-zinc-700 text-sm">{describeAnomaly(a)}</td>
+                  <td className="py-4 px-4 text-zinc-700 font-medium">{row.employee_id}</td>
+                  <td className="py-4 px-4 text-zinc-700">{formatTime(row.clock_in_time)}</td>
+                  <td className="py-4 px-4 text-zinc-700">{formatTime(row.clock_out_time)}</td>
+                  <td className="py-4 px-4 text-zinc-700">{row.shift_length?.toFixed?.(2) ?? row.shift_length}</td>
+                  <td className="py-4 px-4 text-zinc-700 text-sm">{describeAnomaly(row)}</td>
                 </tr>
               ))}
             </tbody>
